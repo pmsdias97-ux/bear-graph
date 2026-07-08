@@ -6,6 +6,16 @@
 <title>Bear Graph — o S&P 500 que sobe apesar de tudo</title>
 <meta name="description" content="O gráfico histórico do S&P 500 anotado com todas as narrativas negativas que existiram — e que nunca o impediram de subir.">
 <link rel="icon" type="image/webp" href="panda.webp">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://pmsdias97-ux.github.io/bear-graph/">
+<meta property="og:title" content="O gráfico que sobe apesar de tudo">
+<meta property="og:description" content="Todas as narrativas que iam destruir o S&P 500, e mesmo assim continuou a subir. O pior cego é aquele que não quer Bear.">
+<meta property="og:image" content="https://pmsdias97-ux.github.io/bear-graph/panda.webp">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="O gráfico que sobe apesar de tudo">
+<meta name="twitter:description" content="Todas as narrativas que iam destruir o S&P 500, e mesmo assim continuou a subir.">
+<meta name="twitter:image" content="https://pmsdias97-ux.github.io/bear-graph/panda.webp">
 <style>
   :root{
     --bg:#f7f7f5; --surface:#ffffff; --ink:#18181b; --ink2:#52525b; --muted:#a1a1aa;
@@ -77,6 +87,18 @@
     position:absolute; top:0; width:1px; background:var(--axis);
     opacity:0; transition:opacity .08s; pointer-events:none; z-index:1;
   }
+  .curveDot{
+    position:absolute; width:8px; height:8px; border-radius:50%; background:var(--line);
+    box-shadow:0 0 0 1px var(--line); border:2px solid var(--surface);
+    opacity:0; transition:opacity .08s; pointer-events:none; z-index:2; transform:translate(-50%,-50%);
+  }
+  .readout{
+    position:absolute; background:var(--surface); border:1px solid var(--border); border-radius:6px;
+    padding:2px 7px; font-size:11px; font-weight:700; color:var(--ink); box-shadow:var(--shadow);
+    opacity:0; transition:opacity .08s; pointer-events:none; z-index:2; white-space:nowrap;
+  }
+  #chDate{ transform:translate(-50%,0); }
+  #chVal{ transform:translate(0,-50%); color:var(--line); }
 
   /* tooltip for historical crises */
   .tip{
@@ -198,6 +220,9 @@
       <svg id="svg" aria-label="Gráfico do S&P 500 ao longo do tempo com anotações de crises"></svg>
       <div class="layer" id="layer">
         <div class="crosshair" id="crosshair"></div>
+        <div class="curveDot" id="curveDot"></div>
+        <div class="readout" id="chDate"></div>
+        <div class="readout" id="chVal"></div>
         <div class="tip" id="tip"></div>
         <div class="tip noteTip" id="ntip"></div>
       </div>
@@ -348,11 +373,15 @@ const layer = document.getElementById("layer");
 const tip   = document.getElementById("tip");
 const ntip  = document.getElementById("ntip");
 const crosshair = document.getElementById("crosshair");
+const curveDot = document.getElementById("curveDot");
+const chDate = document.getElementById("chDate");
+const chVal = document.getElementById("chVal");
 const banner = document.getElementById("banner");
 const bannerText = document.getElementById("bannerText");
 let tipSticky = false, tipIndex = null, editorAnchor = null;
 
 let W=0, H=0;
+let firstRender = true;
 const M = {l:46, r:14, t:18, b:26};
 const plot = () => ({ w: W - M.l - M.r, h: H - M.t - M.b });
 
@@ -456,7 +485,7 @@ function render(){
   const area = d + `L ${xScale(T1).toFixed(1)} ${base} L ${xScale(T0).toFixed(1)} ${base} Z`;
   s += `<g clip-path="url(#clip)">`;
   s += `<path d="${area}" fill="url(#ag)"/>`;
-  s += `<path d="${d}" fill="none" stroke="var(--line)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  s += `<path class="mainline" d="${d}" fill="none" stroke="var(--line)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
   s += `</g>`;
 
   // marcadores de crise (só os que caem no período visível)
@@ -480,6 +509,20 @@ function render(){
   });
 
   svg.innerHTML = s;
+
+  // anima a linha a "desenhar-se" apenas no primeiro carregamento
+  if(firstRender){
+    firstRender = false;
+    const linePath = svg.querySelector(".mainline");
+    if(linePath){
+      const len = linePath.getTotalLength();
+      linePath.style.strokeDasharray = len;
+      linePath.style.strokeDashoffset = len;
+      linePath.getBoundingClientRect();      // força reflow antes da transição
+      linePath.style.transition = "stroke-dashoffset 1.4s ease-out";
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{ linePath.style.strokeDashoffset = "0"; }));
+    }
+  }
 
   // camada HTML: repinta as pills de texto (só quando não estão escondidas)
   layer.querySelectorAll(".note").forEach(n=>n.remove());
@@ -673,15 +716,37 @@ chart.addEventListener("click", ev=>{
   openNoteEditor({ x, y, t });
 });
 
-// linha-guia vertical que acompanha o cursor dentro do gráfico
+// linha-guia vertical + leitura da data/valor em tempo real, ao acompanhar o cursor
+function hideReadout(){
+  crosshair.style.opacity = 0; curveDot.style.opacity = 0;
+  chDate.style.opacity = 0; chVal.style.opacity = 0;
+}
 chart.addEventListener("mousemove", ev=>{
   const r = chart.getBoundingClientRect();
   const x = ev.clientX - r.left, y = ev.clientY - r.top;
-  if(x < M.l || x > W-M.r || y < M.t || y > H-M.b){ crosshair.style.opacity = 0; return; }
+  if(x < M.l || x > W-M.r || y < M.t || y > H-M.b){ hideReadout(); return; }
+
+  const t = tFromX(x), v = sampleV(t), vy = yScale(v);
+
   crosshair.style.left = x + "px";
   crosshair.style.opacity = 0.3;
+
+  curveDot.style.left = x + "px";
+  curveDot.style.top = vy + "px";
+  curveDot.style.opacity = 1;
+
+  chDate.textContent = fmtMonth(t);
+  chDate.style.top = (H - M.b + 4) + "px";
+  const hw = chDate.offsetWidth/2 + 4;
+  chDate.style.left = Math.max(M.l + hw, Math.min(W - M.r - hw, x)) + "px";
+  chDate.style.opacity = 1;
+
+  chVal.textContent = Math.round(v).toLocaleString("pt-PT");
+  chVal.style.left = "4px";
+  chVal.style.top = Math.max(M.t + 10, Math.min(H - M.b - 10, vy)) + "px";
+  chVal.style.opacity = 1;
 });
-chart.addEventListener("mouseleave", ()=>{ crosshair.style.opacity = 0; });
+chart.addEventListener("mouseleave", hideReadout);
 
 // clicar fora do gráfico fecha o editor / tooltip fixo
 document.addEventListener("pointerdown", ev=>{
