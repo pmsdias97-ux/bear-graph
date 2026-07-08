@@ -180,11 +180,11 @@
       </div>
       <div class="seg" role="group" aria-label="Escala do eixo">
         <button id="scaleLog" aria-pressed="true">Log</button>
-        <button id="scaleLin" aria-pressed="false">Linear 🚀</button>
+        <button id="scaleLin" aria-pressed="false">Linear</button>
       </div>
-      <button class="btn" id="themeBtn" title="Alternar tema">🌗 Tema</button>
-      <button class="btn" id="hideBtn" aria-pressed="false" title="Esconder/mostrar o texto das notas">🙈 Esconder texto</button>
-      <button class="btn" id="clearBtn" title="Apagar as minhas notas">🧹 Limpar notas</button>
+      <button class="btn" id="themeBtn" title="Alternar tema">Tema</button>
+      <button class="btn" id="hideBtn" aria-pressed="false" title="Esconder/mostrar o texto das notas">Esconder</button>
+      <button class="btn" id="clearBtn" title="Apagar as minhas notas">Limpar notas</button>
     </div>
   </header>
 
@@ -701,7 +701,7 @@ document.getElementById("clearBtn").addEventListener("click", ()=>{
 const hideBtn = document.getElementById("hideBtn");
 function syncHideBtn(){
   hideBtn.setAttribute("aria-pressed", labelsHidden);
-  hideBtn.textContent = labelsHidden ? "🙉 Mostrar texto" : "🙈 Esconder texto";
+  hideBtn.textContent = labelsHidden ? "Mostrar" : "Esconder";
 }
 syncHideBtn();
 hideBtn.addEventListener("click", ()=>{
