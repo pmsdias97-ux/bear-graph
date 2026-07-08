@@ -679,7 +679,7 @@ chart.addEventListener("mousemove", ev=>{
   const x = ev.clientX - r.left, y = ev.clientY - r.top;
   if(x < M.l || x > W-M.r || y < M.t || y > H-M.b){ crosshair.style.opacity = 0; return; }
   crosshair.style.left = x + "px";
-  crosshair.style.opacity = 1;
+  crosshair.style.opacity = 0.3;
 });
 chart.addEventListener("mouseleave", ()=>{ crosshair.style.opacity = 0; });
 
