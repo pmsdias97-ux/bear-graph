@@ -83,22 +83,18 @@
   .tip.show{opacity:1; visibility:visible}
   .tip b{display:block; color:var(--crisis); font-size:12.5px; margin-bottom:2px}
   .tip span{color:var(--ink2)}
+  .tip.noteTip{border-color:var(--user)}
+  .tip.noteTip span{color:var(--ink); display:block}
 
   /* user annotation pill */
   .note{
     position:absolute; transform:translate(-50%,-100%); max-width:190px;
     background:var(--surface); border:1px solid var(--user); border-radius:9px;
-    padding:5px 28px 5px 9px; font-size:12.5px; color:var(--ink); box-shadow:var(--shadow);
+    padding:5px 9px; font-size:12.5px; color:var(--ink); box-shadow:var(--shadow);
     z-index:5; white-space:normal; line-height:1.35; cursor:pointer;
   }
   .note:hover{box-shadow:0 0 0 2px color-mix(in srgb,var(--user) 30%, transparent), var(--shadow)}
   .note b{color:var(--user); font-weight:700}
-  .note .x{
-    position:absolute; top:2px; right:2px; width:24px; height:24px; border-radius:6px;
-    display:flex; align-items:center; justify-content:center;
-    border:0; background:transparent; color:var(--muted); cursor:pointer; font-size:15px; line-height:1;
-  }
-  .note .x:hover{color:var(--crisis)}
 
   /* inline editor */
   .editor{
@@ -187,6 +183,7 @@
         <button id="scaleLin" aria-pressed="false">Linear 🚀</button>
       </div>
       <button class="btn" id="themeBtn" title="Alternar tema">🌗 Tema</button>
+      <button class="btn" id="hideBtn" aria-pressed="false" title="Esconder/mostrar o texto das notas">🙈 Esconder texto</button>
       <button class="btn" id="clearBtn" title="Apagar as minhas notas">🧹 Limpar notas</button>
     </div>
   </header>
@@ -196,6 +193,7 @@
       <svg id="svg" aria-label="Gráfico do S&P 500 ao longo do tempo com anotações de crises"></svg>
       <div class="layer" id="layer">
         <div class="tip" id="tip"></div>
+        <div class="tip noteTip" id="ntip"></div>
       </div>
     </div>
   </div>
@@ -316,6 +314,11 @@ function saveNotes(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(annotatio
 let storageWarned = false;
 function warnStorage(){ if(storageWarned) return; storageWarned = true; try{ alert("As tuas notas/edições não puderam ser guardadas neste browser (armazenamento cheio ou navegação privada) — vão desaparecer ao recarregar."); }catch(e){} }
 
+// esconder/mostrar o texto das notas do utilizador (os pontos azuis ficam sempre visíveis)
+const HIDE_KEY = "bear-graph:labelsHidden";
+let labelsHidden = (function(){ try{ return localStorage.getItem(HIDE_KEY) === "1"; }catch(e){ return false; } })();
+function saveHidden(){ try{ localStorage.setItem(HIDE_KEY, labelsHidden ? "1" : "0"); }catch(e){} }
+
 // edições ("overrides") das crises históricas, guardadas por índice
 const EV_KEY = "bear-graph:events";
 let eventOverrides = loadOverrides();
@@ -331,6 +334,7 @@ const chart = document.getElementById("chart");
 const svg   = document.getElementById("svg");
 const layer = document.getElementById("layer");
 const tip   = document.getElementById("tip");
+const ntip  = document.getElementById("ntip");
 const banner = document.getElementById("banner");
 const bannerText = document.getElementById("bannerText");
 let tipSticky = false, tipIndex = null, editorAnchor = null;
@@ -451,33 +455,37 @@ function render(){
     s += `<circle class="ev" data-i="${idx}" tabindex="0" role="button" aria-label="${esc((evTime(idx)|0) + ' ' + evTitle(idx) + ' — editar')}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="13" fill="transparent" style="cursor:pointer"/>`;
   });
 
-  // marcadores das notas do utilizador (losango)
+  // marcadores das notas do utilizador (losango) — sempre visíveis, mesmo com o texto escondido
   annotations.forEach((n,idx)=>{
     if(!inView(n.t)) return;
     const x = xScale(n.t), y = yScale(sampleV(n.t));
     s += `<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${x.toFixed(1)}" y2="${base}" stroke="var(--user)" stroke-width="1" stroke-dasharray="2 3" opacity="0.4"/>`;
     s += `<rect x="${(x-4.5).toFixed(1)}" y="${(y-4.5).toFixed(1)}" width="9" height="9" transform="rotate(45 ${x.toFixed(1)} ${y.toFixed(1)})" fill="var(--surface)" stroke="var(--user)" stroke-width="2"/>`;
+    if(labelsHidden){
+      s += `<circle class="un" data-i="${idx}" tabindex="0" role="button" aria-label="${esc('Nota: ' + n.text + ' — editar')}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="13" fill="transparent" style="cursor:pointer"/>`;
+    }
   });
 
   svg.innerHTML = s;
 
-  // camada HTML: repõe tooltip + repinta notas
+  // camada HTML: repinta as pills de texto (só quando não estão escondidas)
   layer.querySelectorAll(".note").forEach(n=>n.remove());
-  annotations.forEach((n)=>{
-    if(!inView(n.t)) return;
-    const x = xScale(n.t), y = yScale(sampleV(n.t));
-    const el = document.createElement("div");
-    el.className = "note";
-    el.tabIndex = 0; el.setAttribute("role","button"); el.setAttribute("aria-label", "Nota: " + n.text + " — editar");
-    el.title = "Clica para editar";
-    el.innerHTML = `<b>“</b>${esc(n.text)}<b>”</b><button class="x" title="Apagar" aria-label="Apagar nota">×</button>`;
-    layer.appendChild(el);
-    place(el, x, y);
-    const openThis = ()=> openNoteEditor({ note:n, x, y, initial:n.text });
-    el.addEventListener("click", ev=>{ if(ev.target.closest(".x")) return; ev.stopPropagation(); openThis(); });
-    el.addEventListener("keydown", ev=>{ if(ev.key==="Enter" || ev.key===" "){ ev.preventDefault(); openThis(); } });
-    el.querySelector(".x").addEventListener("click", ev=>{ ev.stopPropagation(); closeEditor(); const i=annotations.indexOf(n); if(i>=0){ annotations.splice(i,1); saveNotes(); } render(); });
-  });
+  if(!labelsHidden){
+    annotations.forEach((n)=>{
+      if(!inView(n.t)) return;
+      const x = xScale(n.t), y = yScale(sampleV(n.t));
+      const el = document.createElement("div");
+      el.className = "note";
+      el.tabIndex = 0; el.setAttribute("role","button"); el.setAttribute("aria-label", "Nota: " + n.text + " — editar");
+      el.title = "Clica para editar";
+      el.innerHTML = `<b>“</b>${esc(n.text)}<b>”</b>`;
+      layer.appendChild(el);
+      place(el, x, y);
+      const openThis = ()=> openNoteEditor({ note:n, x, y, initial:n.text });
+      el.addEventListener("click", ev=>{ ev.stopPropagation(); openThis(); });
+      el.addEventListener("keydown", ev=>{ if(ev.key==="Enter" || ev.key===" "){ ev.preventDefault(); openThis(); } });
+    });
+  }
 
   // liga hover/tap dos marcadores de crise
   svg.querySelectorAll(".ev").forEach(c=>{
@@ -486,6 +494,15 @@ function render(){
     c.addEventListener("mouseleave", ()=>{ if(!tipSticky && !editor) hideTip(); });
     c.addEventListener("click", ev=>{ ev.stopPropagation(); closeEditor(); showTip(i, true); });
     c.addEventListener("keydown", ev=>{ if(ev.key==="Enter" || ev.key===" "){ ev.preventDefault(); closeEditor(); showTip(i, true); const b = tip.querySelector(".edit"); if(b) b.focus(); } });
+  });
+
+  // liga hover/tap dos marcadores de nota escondidos (mesma lógica das crises)
+  svg.querySelectorAll(".un").forEach(c=>{
+    const i = +c.dataset.i;
+    c.addEventListener("mouseenter", ()=>{ if(!editor) showNoteTip(i); });
+    c.addEventListener("mouseleave", hideNoteTip);
+    c.addEventListener("click", ev=>{ ev.stopPropagation(); const n = annotations[i]; if(!n) return; closeEditor(); hideNoteTip(); openNoteEditor({ note:n, x:xScale(n.t), y:yScale(sampleV(n.t)), initial:n.text }); });
+    c.addEventListener("keydown", ev=>{ if(ev.key==="Enter" || ev.key===" "){ ev.preventDefault(); c.dispatchEvent(new MouseEvent("click", {bubbles:true})); } });
   });
 
   // mantém um editor aberto ancorado ao seu ponto (ex.: quando o gráfico muda de tamanho)
@@ -523,7 +540,18 @@ function showTip(i, sticky){
     if(rb) rb.addEventListener("click", ev=>{ ev.stopPropagation(); delete eventOverrides[i]; saveOverrides(); hideTip(); render(); });
   }
 }
-function hideTip(){ tip.classList.remove("show"); tipSticky = false; tipIndex = null; }
+function hideTip(){ tip.classList.remove("show"); tipSticky = false; tipIndex = null; hideNoteTip(); }
+
+// tooltip de leitura (hover) para uma nota do utilizador quando o texto está escondido
+function showNoteTip(i){
+  const n = annotations[i];
+  if(!n) return;
+  const x = xScale(n.t), y = yScale(sampleV(n.t));
+  ntip.innerHTML = `<span>${esc(n.text)}</span>`;
+  place(ntip, x, y);
+  ntip.classList.add("show");
+}
+function hideNoteTip(){ ntip.classList.remove("show"); }
 
 /* ---------- 7. Interação: escrever e editar no gráfico ---------- */
 let editor = null;
@@ -667,6 +695,19 @@ document.getElementById("clearBtn").addEventListener("click", ()=>{
   closeEditor();
   if(!annotations.length) return;
   if(confirm("Apagar todas as tuas notas?")){ annotations = []; saveNotes(); render(); }
+});
+
+// esconder/mostrar o texto das notas (os pontos azuis mantêm-se sempre visíveis)
+const hideBtn = document.getElementById("hideBtn");
+function syncHideBtn(){
+  hideBtn.setAttribute("aria-pressed", labelsHidden);
+  hideBtn.textContent = labelsHidden ? "🙉 Mostrar texto" : "🙈 Esconder texto";
+}
+syncHideBtn();
+hideBtn.addEventListener("click", ()=>{
+  closeEditor(); hideTip();
+  labelsHidden = !labelsHidden;
+  saveHidden(); syncHideBtn(); render();
 });
 
 // tema
