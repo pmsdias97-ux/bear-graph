@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bear Graph — o S&P 500 que sobe apesar de tudo</title>
 <meta name="description" content="O gráfico histórico do S&P 500 anotado com todas as narrativas negativas que existiram — e que nunca o impediram de subir.">
+<link rel="icon" type="image/webp" href="panda.webp">
 <style>
   :root{
     --bg:#f7f7f5; --surface:#ffffff; --ink:#18181b; --ink2:#52525b; --muted:#a1a1aa;
@@ -44,6 +45,8 @@
 
   header{display:flex; flex-wrap:wrap; align-items:flex-end; gap:14px 20px; margin-bottom:18px}
   header .titles{flex:1 1 320px; min-width:0}
+  .titlerow{display:flex; align-items:center; gap:12px}
+  .logo{width:44px; height:44px; border-radius:11px; flex:none; box-shadow:0 1px 3px rgba(0,0,0,.25)}
   h1{margin:0; font-size:clamp(22px,3.4vw,32px); letter-spacing:-.02em; font-weight:750}
   h1 .up{color:var(--line)}
   .sub{margin:6px 0 0; color:var(--ink2); font-size:clamp(13px,1.7vw,16px)}
@@ -165,7 +168,10 @@
 <div class="wrap">
   <header>
     <div class="titles">
-      <h1>O gráfico que <span class="up">sobe</span> apesar de tudo</h1>
+      <div class="titlerow">
+        <img src="panda.webp" alt="" class="logo">
+        <h1>O gráfico que <span class="up">sobe</span> apesar de tudo</h1>
+      </div>
       <p class="sub">Todas as narrativas que iam destruir o S&amp;P 500, e mesmo assim continuou a subir.</p>
     </div>
     <div class="toolbar">
