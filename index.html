@@ -73,6 +73,11 @@
   .layer{position:absolute; inset:0; pointer-events:none}
   .layer > *{pointer-events:auto}
 
+  .crosshair{
+    position:absolute; top:0; width:1px; background:var(--axis);
+    opacity:0; transition:opacity .08s; pointer-events:none; z-index:1;
+  }
+
   /* tooltip for historical crises */
   .tip{
     position:absolute; max-width:250px; transform:translate(-50%,-100%);
@@ -192,6 +197,7 @@
     <div class="chart" id="chart">
       <svg id="svg" aria-label="Gráfico do S&P 500 ao longo do tempo com anotações de crises"></svg>
       <div class="layer" id="layer">
+        <div class="crosshair" id="crosshair"></div>
         <div class="tip" id="tip"></div>
         <div class="tip noteTip" id="ntip"></div>
       </div>
@@ -341,6 +347,7 @@ const svg   = document.getElementById("svg");
 const layer = document.getElementById("layer");
 const tip   = document.getElementById("tip");
 const ntip  = document.getElementById("ntip");
+const crosshair = document.getElementById("crosshair");
 const banner = document.getElementById("banner");
 const bannerText = document.getElementById("bannerText");
 let tipSticky = false, tipIndex = null, editorAnchor = null;
@@ -515,6 +522,10 @@ function render(){
   if(editor && editorAnchor){
     place(editor, xScale(editorAnchor.t), Math.max(70, yScale(sampleV(editorAnchor.t))));
   }
+
+  // geometria da linha-guia vertical (crosshair)
+  crosshair.style.top = M.t + "px";
+  crosshair.style.height = p.h.toFixed(1) + "px";
 }
 
 // posiciona um elemento overlay acima do ponto, sem sair do gráfico
@@ -661,6 +672,16 @@ chart.addEventListener("click", ev=>{
   if(placementText !== null){ closeEditor(); addNote(t, placementText); exitPlacement(); return; }
   openNoteEditor({ x, y, t });
 });
+
+// linha-guia vertical que acompanha o cursor dentro do gráfico
+chart.addEventListener("mousemove", ev=>{
+  const r = chart.getBoundingClientRect();
+  const x = ev.clientX - r.left, y = ev.clientY - r.top;
+  if(x < M.l || x > W-M.r || y < M.t || y > H-M.b){ crosshair.style.opacity = 0; return; }
+  crosshair.style.left = x + "px";
+  crosshair.style.opacity = 1;
+});
+chart.addEventListener("mouseleave", ()=>{ crosshair.style.opacity = 0; });
 
 // clicar fora do gráfico fecha o editor / tooltip fixo
 document.addEventListener("pointerdown", ev=>{
