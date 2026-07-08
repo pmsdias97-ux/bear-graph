@@ -128,7 +128,7 @@
     appearance:none; font:inherit; font-size:11.5px; font-weight:600; cursor:pointer;
     border:1px solid var(--border); background:var(--chip); color:var(--chip-ink); border-radius:7px; padding:4px 9px;
   }
-  .tbtn.reset{color:var(--danger-ink)}
+  .tbtn.reset, .tbtn.del{color:var(--danger-ink)}
   .tbtn:hover{color:var(--ink)}
 
   .hint{margin:12px 2px 0; color:var(--ink2); font-size:13px; display:flex; gap:7px; align-items:center; flex-wrap:wrap}
@@ -329,6 +329,12 @@ function evTime(i){ return EVENTS[i][0]; }
 function evTitle(i){ return isEdited(i) ? eventOverrides[i].titulo : EVENTS[i][1]; }
 function evText(i){ return isEdited(i) ? eventOverrides[i].texto : EVENTS[i][2]; }
 
+// crises apagadas pelo utilizador — guardadas por índice, persistidas no browser
+const DEL_KEY = "bear-graph:deletedEvents";
+let deletedEvents = (function(){ try{ const a = JSON.parse(localStorage.getItem(DEL_KEY)); return new Set(Array.isArray(a) ? a : []); }catch(e){ return new Set(); } })();
+function saveDeleted(){ try{ localStorage.setItem(DEL_KEY, JSON.stringify([...deletedEvents])); }catch(e){ warnStorage(); } }
+function isDeleted(i){ return deletedEvents.has(i); }
+
 /* ---------- 5. Elementos + geometria ---------- */
 const chart = document.getElementById("chart");
 const svg   = document.getElementById("svg");
@@ -448,7 +454,7 @@ function render(){
 
   // marcadores de crise (só os que caem no período visível)
   EVENTS.forEach((e,idx)=>{
-    if(!inView(e[0])) return;
+    if(!inView(e[0]) || isDeleted(idx)) return;
     const x = xScale(e[0]), y = yScale(sampleV(e[0]));
     s += `<line x1="${x.toFixed(1)}" y1="${(y).toFixed(1)}" x2="${x.toFixed(1)}" y2="${base}" stroke="var(--crisis)" stroke-width="1" stroke-dasharray="2 3" opacity="0.35"/>`;
     s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5" fill="${isEdited(idx)?'var(--crisis)':'var(--surface)'}" stroke="var(--crisis)" stroke-width="2"/>`;
@@ -527,7 +533,7 @@ function showTip(i, sticky){
   if(sticky){
     html += `<div class="acts"><button class="tbtn edit" type="button">✎ Editar</button>`;
     if(isEdited(i)) html += `<button class="tbtn reset" type="button">↺ Repor</button>`;
-    html += `</div>`;
+    html += `<button class="tbtn del" type="button">Apagar</button></div>`;
   }
   tip.innerHTML = html;
   place(tip, x, y);
@@ -538,6 +544,15 @@ function showTip(i, sticky){
     if(eb) eb.addEventListener("click", ev=>{ ev.stopPropagation(); openCrisisEditor(i, x, y); });
     const rb = tip.querySelector(".reset");
     if(rb) rb.addEventListener("click", ev=>{ ev.stopPropagation(); delete eventOverrides[i]; saveOverrides(); hideTip(); render(); });
+    const db = tip.querySelector(".del");
+    if(db) db.addEventListener("click", ev=>{
+      ev.stopPropagation();
+      if(confirm("Apagar esta crise do gráfico?")){
+        deletedEvents.add(i); saveDeleted();
+        delete eventOverrides[i]; saveOverrides();
+        hideTip(); render();
+      }
+    });
   }
 }
 function hideTip(){ tip.classList.remove("show"); tipSticky = false; tipIndex = null; hideNoteTip(); }
