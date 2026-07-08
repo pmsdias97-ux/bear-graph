@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bear Graph — o S&P 500 que sobe apesar de tudo</title>
+<meta name="description" content="O gráfico histórico do S&P 500 anotado com todas as narrativas negativas que existiram — e que nunca o impediram de subir.">
+<style>
+  :root{
+    --bg:#f7f7f5; --surface:#ffffff; --ink:#18181b; --ink2:#52525b; --muted:#a1a1aa;
+    --grid:#eceae7; --axis:#d6d3d1; --line:#15803d; --area:#16a34a;
+    --crisis:#dc2626; --user:#2563eb; --chip:#f1f1ef; --chip-ink:#3f3f46;
+    --border:#e6e4e1; --shadow:0 6px 24px rgba(0,0,0,.10); --danger-ink:#b91c1c; --save-ink:#ffffff;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0c0e12; --surface:#14171d; --ink:#f4f4f5; --ink2:#a1a1aa; --muted:#71717a;
+      --grid:#22262d; --axis:#3a3f47; --line:#4ade80; --area:#22c55e;
+      --crisis:#f87171; --user:#60a5fa; --chip:#1c2027; --chip-ink:#d4d4d8;
+      --border:#282c33; --shadow:0 8px 30px rgba(0,0,0,.5); --danger-ink:#f87171; --save-ink:#0b0e13;
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#f7f7f5; --surface:#ffffff; --ink:#18181b; --ink2:#52525b; --muted:#a1a1aa;
+    --grid:#eceae7; --axis:#d6d3d1; --line:#15803d; --area:#16a34a;
+    --crisis:#dc2626; --user:#2563eb; --chip:#f1f1ef; --chip-ink:#3f3f46;
+    --border:#e6e4e1; --shadow:0 6px 24px rgba(0,0,0,.10); --danger-ink:#b91c1c; --save-ink:#ffffff;
+  }
+  :root[data-theme="dark"]{
+    --bg:#0c0e12; --surface:#14171d; --ink:#f4f4f5; --ink2:#a1a1aa; --muted:#71717a;
+    --grid:#22262d; --axis:#3a3f47; --line:#4ade80; --area:#22c55e;
+    --crisis:#f87171; --user:#60a5fa; --chip:#1c2027; --chip-ink:#d4d4d8;
+    --border:#282c33; --shadow:0 8px 30px rgba(0,0,0,.5); --danger-ink:#f87171; --save-ink:#0b0e13;
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px; margin:0 auto; padding:28px 20px 56px}
+
+  header{display:flex; flex-wrap:wrap; align-items:flex-end; gap:14px 20px; margin-bottom:18px}
+  header .titles{flex:1 1 320px; min-width:0}
+  h1{margin:0; font-size:clamp(22px,3.4vw,32px); letter-spacing:-.02em; font-weight:750}
+  h1 .up{color:var(--line)}
+  .sub{margin:6px 0 0; color:var(--ink2); font-size:clamp(13px,1.7vw,16px)}
+
+  .toolbar{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+  .seg{display:inline-flex; background:var(--chip); border:1px solid var(--border); border-radius:10px; padding:3px}
+  .seg button{
+    appearance:none; border:0; background:transparent; color:var(--chip-ink);
+    font:inherit; font-size:13px; font-weight:600; padding:6px 12px; border-radius:7px; cursor:pointer;
+  }
+  .seg button[aria-pressed="true"]{background:var(--surface); color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.12)}
+  .btn{
+    appearance:none; font:inherit; font-size:13px; font-weight:600; cursor:pointer;
+    background:var(--chip); color:var(--chip-ink); border:1px solid var(--border);
+    border-radius:10px; padding:8px 12px; display:inline-flex; align-items:center; gap:6px;
+  }
+  .btn:hover{color:var(--ink)}
+
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow)}
+  .chartwrap{padding:10px 8px 6px}
+  .chart{position:relative; width:100%; height:min(62vh,560px); min-height:340px; touch-action:manipulation}
+  .chart svg{position:absolute; inset:0; width:100%; height:100%; display:block; cursor:crosshair}
+  .layer{position:absolute; inset:0; pointer-events:none}
+  .layer > *{pointer-events:auto}
+
+  /* tooltip for historical crises */
+  .tip{
+    position:absolute; max-width:250px; transform:translate(-50%,-100%);
+    background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    padding:9px 11px; box-shadow:var(--shadow); font-size:12.5px; z-index:6;
+    opacity:0; visibility:hidden; transition:opacity .12s;
+  }
+  .tip.show{opacity:1; visibility:visible}
+  .tip b{display:block; color:var(--crisis); font-size:12.5px; margin-bottom:2px}
+  .tip span{color:var(--ink2)}
+
+  /* user annotation pill */
+  .note{
+    position:absolute; transform:translate(-50%,-100%); max-width:190px;
+    background:var(--surface); border:1px solid var(--user); border-radius:9px;
+    padding:5px 28px 5px 9px; font-size:12.5px; color:var(--ink); box-shadow:var(--shadow);
+    z-index:5; white-space:normal; line-height:1.35; cursor:pointer;
+  }
+  .note:hover{box-shadow:0 0 0 2px color-mix(in srgb,var(--user) 30%, transparent), var(--shadow)}
+  .note b{color:var(--user); font-weight:700}
+  .note .x{
+    position:absolute; top:2px; right:2px; width:24px; height:24px; border-radius:6px;
+    display:flex; align-items:center; justify-content:center;
+    border:0; background:transparent; color:var(--muted); cursor:pointer; font-size:15px; line-height:1;
+  }
+  .note .x:hover{color:var(--crisis)}
+
+  /* inline editor */
+  .editor{
+    position:absolute; transform:translate(-50%,-100%); z-index:9;
+    background:var(--surface); border:1px solid var(--user); border-radius:10px;
+    padding:8px; box-shadow:var(--shadow); width:min(260px,72vw);
+  }
+  .editor input{
+    width:100%; border:0; outline:0; background:transparent; color:var(--ink);
+    font:inherit; font-size:13.5px;
+  }
+  .editor .hintline{font-size:11px; color:var(--muted); margin-top:4px}
+  .editor.wide{width:min(300px,82vw)}
+  .editor input.title{font-weight:600; font-size:13.5px; border-bottom:1px solid var(--border); padding-bottom:5px}
+  .editor textarea{
+    width:100%; margin-top:6px; padding:6px 7px; border:1px solid var(--border); border-radius:7px;
+    background:transparent; color:var(--ink); font:inherit; font-size:13px; line-height:1.4; resize:vertical;
+  }
+  .editor textarea:focus, .editor input:focus{outline:2px solid var(--user); outline-offset:1px}
+  .editor .row{display:flex; gap:6px; margin-top:8px; flex-wrap:wrap}
+  .ebtn{
+    appearance:none; font:inherit; font-size:12px; font-weight:600; cursor:pointer;
+    border:1px solid var(--border); background:var(--chip); color:var(--chip-ink); border-radius:7px; padding:5px 10px;
+  }
+  .ebtn.save{background:var(--user); color:var(--save-ink); border-color:var(--user)}
+  .ebtn.del, .ebtn.reset{color:var(--danger-ink)}
+  .ebtn:hover{filter:brightness(1.06)}
+
+  .tip .acts{display:flex; gap:6px; margin-top:8px}
+  .tbtn{
+    appearance:none; font:inherit; font-size:11.5px; font-weight:600; cursor:pointer;
+    border:1px solid var(--border); background:var(--chip); color:var(--chip-ink); border-radius:7px; padding:4px 9px;
+  }
+  .tbtn.reset{color:var(--danger-ink)}
+  .tbtn:hover{color:var(--ink)}
+
+  .hint{margin:12px 2px 0; color:var(--ink2); font-size:13px; display:flex; gap:7px; align-items:center; flex-wrap:wrap}
+  .hint .dot{display:inline-block; width:9px; height:9px; border-radius:50%; flex:none}
+  .hint .dot.c{background:var(--crisis)} .hint .dot.u{background:var(--user)}
+
+  /* placement banner */
+  .banner{
+    display:none; margin:12px 0 0; padding:10px 14px; border-radius:12px;
+    background:color-mix(in srgb,var(--user) 12%, var(--surface));
+    border:1px solid var(--user); color:var(--ink); font-size:13.5px;
+    align-items:center; gap:10px;
+  }
+  .banner.show{display:flex}
+  .banner b{color:var(--user)}
+  .banner button{margin-left:auto}
+
+  section.sug{margin-top:26px}
+  section.sug h2{font-size:15px; margin:0 0 4px; letter-spacing:-.01em}
+  section.sug p{margin:0 0 12px; color:var(--ink2); font-size:13px}
+  .chips{display:flex; flex-wrap:wrap; gap:8px}
+  .chip{
+    appearance:none; font:inherit; font-size:13px; cursor:pointer;
+    background:var(--chip); color:var(--chip-ink); border:1px solid var(--border);
+    border-radius:999px; padding:7px 13px; transition:.12s;
+  }
+  .chip:hover{border-color:var(--user); color:var(--ink)}
+
+  footer{margin-top:34px; color:var(--muted); font-size:11.5px; line-height:1.6}
+  a{color:inherit}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="titles">
+      <h1>O gráfico que <span class="up">sobe</span> apesar de tudo</h1>
+      <p class="sub">Todas as narrativas que iam destruir o S&amp;P 500, e mesmo assim continuou a subir.</p>
+    </div>
+    <div class="toolbar">
+      <div class="seg" role="group" aria-label="Período">
+        <button data-range="all" aria-pressed="true">Máx</button>
+        <button data-range="10y" aria-pressed="false">10A</button>
+        <button data-range="5y" aria-pressed="false">5A</button>
+        <button data-range="1y" aria-pressed="false">1A</button>
+      </div>
+      <div class="seg" role="group" aria-label="Escala do eixo">
+        <button id="scaleLog" aria-pressed="true">Log</button>
+        <button id="scaleLin" aria-pressed="false">Linear 🚀</button>
+      </div>
+      <button class="btn" id="themeBtn" title="Alternar tema">🌗 Tema</button>
+      <button class="btn" id="clearBtn" title="Apagar as minhas notas">🧹 Limpar notas</button>
+    </div>
+  </header>
+
+  <div class="card chartwrap">
+    <div class="chart" id="chart">
+      <svg id="svg" aria-label="Gráfico do S&P 500 ao longo do tempo com anotações de crises"></svg>
+      <div class="layer" id="layer">
+        <div class="tip" id="tip"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hint">
+    <span><b>O pior cego é aquele que não quer Bear.</b></span>
+    <span style="margin-left:auto"><span class="dot c"></span> crises &nbsp; <span class="dot u"></span> notas</span>
+  </div>
+
+  <div class="banner" id="banner">
+    <span>Modo carimbo: clica no gráfico para colocar <b id="bannerText"></b></span>
+    <button class="btn" id="bannerCancel">Cancelar</button>
+  </div>
+
+  <section class="sug">
+    <h2>Sugestões de crises</h2>
+    <p>Doses de pânico. Clica numa e carimba-a no gráfico.</p>
+    <div class="chips" id="chips"></div>
+  </section>
+
+  <footer>
+    Gráfico meramente ilustrativo. Os valores do S&amp;P 500 são aproximados.
+    Rentabilidades passadas não garantem rentabilidades futuras. Isto não é aconselhamento financeiro.
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* ---------- 1. Dados: âncoras históricas do S&P 500 (níveis aproximados) ---------- */
+const ANCHORS = [
+  [1980.00,110],[1982.60,102],[1985.00,180],[1987.60,337],[1987.95,247],
+  [1990.50,369],[1990.80,295],[1993.00,450],[1994.10,482],[1995.00,470],
+  [1998.50,1186],[1998.80,959],[2000.20,1527],[2001.70,965],[2002.80,777],
+  [2004.00,1130],[2006.00,1280],[2007.80,1565],[2008.90,900],[2009.20,677],
+  [2011.30,1364],[2011.80,1099],[2013.00,1480],[2014.50,1960],[2015.40,2130],
+  [2016.10,1829],[2018.70,2930],[2018.95,2351],[2020.15,3386],[2020.25,2237],
+  [2021.00,3756],[2021.95,4766],[2022.80,3577],[2023.50,4589],[2024.00,4845],
+  [2024.95,5882],[2025.95,6200],[2026.50,6400]
+];
+
+// ruído determinístico (mesma forma em cada carregamento)
+function pseudo(i){ const x = Math.sin(i*127.1 + 311.7)*43758.5453; return (x - Math.floor(x))*2 - 1; }
+
+// gera série ~mensal interpolando em espaço logarítmico entre âncoras
+const SPX = (function(){
+  const out = [];
+  const t0 = ANCHORS[0][0], t1 = ANCHORS[ANCHORS.length-1][0];
+  let seg = 0, i = 0;
+  for(let t = t0; t <= t1 + 1e-9; t += 1/12, i++){
+    while(seg < ANCHORS.length-2 && t > ANCHORS[seg+1][0]) seg++;
+    const a = ANCHORS[seg], b = ANCHORS[seg+1];
+    const f = (t - a[0]) / (b[0] - a[0]);
+    let v = Math.exp(Math.log(a[1]) + f*(Math.log(b[1]) - Math.log(a[1])));
+    v *= (1 + 0.012*pseudo(i));           // textura leve
+    out.push({t:+t.toFixed(4), v});
+  }
+  return out;
+})();
+const T0 = SPX[0].t, T1 = SPX[SPX.length-1].t;
+const VMAX = Math.max(...SPX.map(p=>p.v));
+const VMIN = Math.min(...SPX.map(p=>p.v));
+
+function sampleV(t){
+  if(t<=T0) return SPX[0].v;
+  if(t>=T1) return SPX[SPX.length-1].v;
+  const idx = Math.round((t - T0)*12);
+  return (SPX[idx]||SPX[SPX.length-1]).v;
+}
+
+/* ---------- 2. Narrativas negativas históricas ---------- */
+const EVENTS = [
+  [1987.80,"Black Monday","−22% num único dia. “É o fim de Wall Street.” O índice fechou o ano no verde."],
+  [1990.60,"Guerra do Golfo + recessão","“Petróleo a disparar, recessão à porta — sai de ações já.”"],
+  [1994.10,"O massacre das obrigações","“A Fed a subir juros vai esmagar tudo o que mexe.”"],
+  [1997.80,"Crise financeira asiática","“O contágio dos ‘tigres’ vai afundar os mercados ocidentais.”"],
+  [1998.75,"LTCM + default russo","“Um só fundo vai levar todo o sistema financeiro à falência.”"],
+  [2000.20,"Rebenta a bolha dot-com","“A internet era só uma moda. As ações não valem nada.”"],
+  [2001.70,"11 de Setembro","“Os mercados nunca mais recuperam a confiança.”"],
+  [2002.50,"Enron / WorldCom","“As contas são todas falsas — o capitalismo é uma fraude.”"],
+  [2008.75,"Crise financeira global","“O sistema bancário colapsou. Isto é a Grande Depressão 2.0.”"],
+  [2010.40,"Flash Crash + dívida grega","“A Grécia vai arrastar o euro — e o mundo — consigo.”"],
+  [2011.60,"EUA perdem o rating AAA","“A América em quase-default. Vende antes que seja tarde.”"],
+  [2013.40,"Taper tantrum","“Sem os estímulos da Fed, não há mercado que se aguente.”"],
+  [2015.60,"China desvaloriza + Grexit","“A travagem chinesa é o princípio do fim de tudo.”"],
+  [2016.50,"Brexit + eleição de Trump","“Os mercados vão colapsar da noite para o dia.”"],
+  [2018.90,"Guerra comercial + queda do Q4","“Tarifas e Fed agressiva: o bull market morreu.”"],
+  [2020.20,"Crash da COVID","“A economia mundial vai fechar para sempre.”"],
+  [2022.40,"Inflação + guerra na Ucrânia","“Inflação de 40 anos e juros a disparar: estagflação garantida.”"],
+  [2023.20,"Colapso do SVB","“Uma nova crise bancária em cadeia está a começar.”"],
+  [2024.60,"“A bolha da IA”","“Sobrevalorização recorde, pior que a dot-com. Vai rebentar.”"]
+];
+
+/* ---------- 3. Sugestões evergreen ---------- */
+const SUGESTOES = [
+  "A curva de juros inverteu — recessão garantida",
+  "O P/E está caríssimo, está tudo sobrevalorizado",
+  "O indicador de Buffett está no vermelho",
+  "Os boomers a reformarem-se vão drenar o mercado",
+  "O dólar vai colapsar / hiperinflação iminente",
+  "A bolha do investimento passivo vai rebentar",
+  "A dívida nacional é insustentável",
+  "Máximos históricos — só pode cair a partir daqui",
+  "A Fed vai matar o mercado",
+  "Desta vez é diferente",
+  "A bolha da IA é pior que a dot-com",
+  "Guerra geopolítica vai destruir tudo"
+];
+
+/* ---------- 4. Estado ---------- */
+const LS_KEY = "bear-graph:annotations";
+let scaleMode = "log";
+let placementText = null;
+let annotations = loadNotes();
+
+function loadNotes(){ try{ const a = JSON.parse(localStorage.getItem(LS_KEY)); return Array.isArray(a) ? a : []; }catch(e){ return []; } }
+function saveNotes(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(annotations)); }catch(e){ warnStorage(); } }
+let storageWarned = false;
+function warnStorage(){ if(storageWarned) return; storageWarned = true; try{ alert("As tuas notas/edições não puderam ser guardadas neste browser (armazenamento cheio ou navegação privada) — vão desaparecer ao recarregar."); }catch(e){} }
+
+// edições ("overrides") das crises históricas, guardadas por índice
+const EV_KEY = "bear-graph:events";
+let eventOverrides = loadOverrides();
+function loadOverrides(){ try{ const o = JSON.parse(localStorage.getItem(EV_KEY)); return (o && typeof o === "object") ? o : {}; }catch(e){ return {}; } }
+function saveOverrides(){ try{ localStorage.setItem(EV_KEY, JSON.stringify(eventOverrides)); }catch(e){ warnStorage(); } }
+function isEdited(i){ return Object.prototype.hasOwnProperty.call(eventOverrides, i); }
+function evTime(i){ return EVENTS[i][0]; }
+function evTitle(i){ return isEdited(i) ? eventOverrides[i].titulo : EVENTS[i][1]; }
+function evText(i){ return isEdited(i) ? eventOverrides[i].texto : EVENTS[i][2]; }
+
+/* ---------- 5. Elementos + geometria ---------- */
+const chart = document.getElementById("chart");
+const svg   = document.getElementById("svg");
+const layer = document.getElementById("layer");
+const tip   = document.getElementById("tip");
+const banner = document.getElementById("banner");
+const bannerText = document.getElementById("bannerText");
+let tipSticky = false, tipIndex = null, editorAnchor = null;
+
+let W=0, H=0;
+const M = {l:46, r:14, t:18, b:26};
+const plot = () => ({ w: W - M.l - M.r, h: H - M.t - M.b });
+
+let view = "all";                     // período visível: all | 10y | 5y | 1y
+let vt0 = T0, vt1 = T1;               // domínio de tempo visível
+let yLog = true, yLo = 0, yHi = 1;    // domínio do eixo Y (espaço log ou linear)
+
+const xScale = t => M.l + (t - vt0)/(vt1 - vt0) * plot().w;
+const tFromX = x => vt0 + (x - M.l)/plot().w * (vt1 - vt0);
+function yScale(v){
+  const p = plot();
+  return M.t + p.h - ((yLog ? Math.log(v) : v) - yLo)/(yHi - yLo) * p.h;
+}
+
+const SVGNS = "http://www.w3.org/2000/svg";
+const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+
+const MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+function fmtMonth(t){ let y = Math.floor(t + 1e-6), m = Math.round((t - y)*12); if(m>11){ m=0; y++; } return MESES[m] + " '" + String(y%100).padStart(2,"0"); }
+function niceStep(x){ const p = Math.pow(10, Math.floor(Math.log10(x))); const f = x/p; return (f<1.5?1:f<3?2:f<7?5:10)*p; }
+
+// ticks do eixo X consoante o período visível
+function xTicksFor(a, b, plotW){
+  const span = b - a, out = [];
+  if(span <= 2.2){                                   // ~1 ano → meses
+    const target = plotW < 430 ? 4 : 6;
+    const stepM = Math.max(1, Math.round(span*12/target));
+    for(let m = Math.ceil(a*12); m/12 <= b + 1e-6; m += stepM){ const t = m/12; out.push({t, label:fmtMonth(t)}); }
+  } else {                                            // anos
+    const step = span > 30 ? 5 : span > 12 ? 2 : 1;
+    for(let y = Math.ceil(a/step)*step; y <= b + 1e-6; y += step) out.push({t:y, label:String(y)});
+  }
+  return out;
+}
+// valores dos ticks do eixo Y para o intervalo visível
+function yTicksFor(vmin, vmax, log){
+  const out = [];
+  if(log && vmax/vmin >= 4){                          // décadas 1·2·5
+    for(let p=0; p<=6; p++) for(const m of [1,2,5]){ const v = m*Math.pow(10,p); if(v >= vmin*0.85 && v <= vmax*1.12) out.push(v); }
+  } else {                                            // passos "redondos"
+    const lo = (!log && view === "all") ? 0 : vmin;
+    const step = niceStep(Math.max(1e-6,(vmax - lo)/5));
+    for(let v = Math.ceil(lo/step)*step; v <= vmax*1.001; v += step) if(v > 0 || !log) out.push(v);
+  }
+  return out;
+}
+
+/* ---------- 6. Render ---------- */
+function render(){
+  const r = chart.getBoundingClientRect();
+  W = r.width; H = r.height;
+  const p = plot();
+
+  // período visível → domínio de tempo
+  const yrs = { all:null, "10y":10, "5y":5, "1y":1 }[view];
+  vt1 = T1;
+  vt0 = (yrs == null) ? T0 : Math.max(T0, T1 - yrs);
+
+  // min/max dos pontos visíveis → domínio do eixo Y
+  let vmin = Infinity, vmax = -Infinity;
+  for(const pt of SPX){ if(pt.t >= vt0 - 1e-9 && pt.t <= vt1 + 1e-9){ if(pt.v < vmin) vmin = pt.v; if(pt.v > vmax) vmax = pt.v; } }
+  if(!isFinite(vmin)){ vmin = VMIN; vmax = VMAX; }
+  yLog = (scaleMode === "log");
+  if(yLog){ yLo = Math.log(vmin*0.92); yHi = Math.log(vmax*1.06); }
+  else { yLo = (view === "all") ? 0 : vmin*0.96; yHi = vmax*1.05; }
+
+  const inView = t => t >= vt0 - 1e-9 && t <= vt1 + 1e-9;
+  const base = (H - M.b).toFixed(1);
+
+  let s = "";
+  // defs: gradiente da área + recorte à zona do gráfico
+  s += `<defs>
+    <linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="var(--area)" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="var(--area)" stop-opacity="0"/></linearGradient>
+    <clipPath id="clip"><rect x="${M.l}" y="${M.t}" width="${p.w.toFixed(1)}" height="${p.h.toFixed(1)}"/></clipPath>
+  </defs>`;
+
+  // gridlines + labels Y
+  for(const v of yTicksFor(vmin, vmax, yLog)){
+    const y = yScale(v);
+    if(y < M.t-1 || y > H-M.b+1) continue;
+    s += `<line x1="${M.l}" y1="${y.toFixed(1)}" x2="${W-M.r}" y2="${y.toFixed(1)}" stroke="var(--grid)" stroke-width="1"/>`;
+    s += `<text x="${M.l-8}" y="${(y+3.5).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--muted)">${v>=1000?(+(v/1000).toFixed(1))+"k":Math.round(v)}</text>`;
+  }
+  // gridlines + labels X
+  for(const tk of xTicksFor(vt0, vt1, p.w)){
+    const x = xScale(tk.t);
+    if(x < M.l-1 || x > W-M.r+1) continue;
+    s += `<line x1="${x.toFixed(1)}" y1="${M.t}" x2="${x.toFixed(1)}" y2="${H-M.b}" stroke="var(--grid)" stroke-width="1"/>`;
+    const anchor = x > W-M.r-16 ? "end" : (x < M.l+16 ? "start" : "middle");
+    s += `<text x="${x.toFixed(1)}" y="${H-M.b+16}" text-anchor="${anchor}" font-size="11" fill="var(--muted)">${tk.label}</text>`;
+  }
+
+  // caminho da linha + área (recortado à zona do gráfico)
+  let d = "";
+  for(let i=0;i<SPX.length;i++){
+    const x = xScale(SPX[i].t).toFixed(1), y = yScale(SPX[i].v).toFixed(1);
+    d += (i? "L":"M") + x + " " + y + " ";
+  }
+  const area = d + `L ${xScale(T1).toFixed(1)} ${base} L ${xScale(T0).toFixed(1)} ${base} Z`;
+  s += `<g clip-path="url(#clip)">`;
+  s += `<path d="${area}" fill="url(#ag)"/>`;
+  s += `<path d="${d}" fill="none" stroke="var(--line)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  s += `</g>`;
+
+  // marcadores de crise (só os que caem no período visível)
+  EVENTS.forEach((e,idx)=>{
+    if(!inView(e[0])) return;
+    const x = xScale(e[0]), y = yScale(sampleV(e[0]));
+    s += `<line x1="${x.toFixed(1)}" y1="${(y).toFixed(1)}" x2="${x.toFixed(1)}" y2="${base}" stroke="var(--crisis)" stroke-width="1" stroke-dasharray="2 3" opacity="0.35"/>`;
+    s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5" fill="${isEdited(idx)?'var(--crisis)':'var(--surface)'}" stroke="var(--crisis)" stroke-width="2"/>`;
+    s += `<circle class="ev" data-i="${idx}" tabindex="0" role="button" aria-label="${esc((evTime(idx)|0) + ' ' + evTitle(idx) + ' — editar')}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="13" fill="transparent" style="cursor:pointer"/>`;
+  });
+
+  // marcadores das notas do utilizador (losango)
+  annotations.forEach((n,idx)=>{
+    if(!inView(n.t)) return;
+    const x = xScale(n.t), y = yScale(sampleV(n.t));
+    s += `<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${x.toFixed(1)}" y2="${base}" stroke="var(--user)" stroke-width="1" stroke-dasharray="2 3" opacity="0.4"/>`;
+    s += `<rect x="${(x-4.5).toFixed(1)}" y="${(y-4.5).toFixed(1)}" width="9" height="9" transform="rotate(45 ${x.toFixed(1)} ${y.toFixed(1)})" fill="var(--surface)" stroke="var(--user)" stroke-width="2"/>`;
+  });
+
+  svg.innerHTML = s;
+
+  // camada HTML: repõe tooltip + repinta notas
+  layer.querySelectorAll(".note").forEach(n=>n.remove());
+  annotations.forEach((n)=>{
+    if(!inView(n.t)) return;
+    const x = xScale(n.t), y = yScale(sampleV(n.t));
+    const el = document.createElement("div");
+    el.className = "note";
+    el.tabIndex = 0; el.setAttribute("role","button"); el.setAttribute("aria-label", "Nota: " + n.text + " — editar");
+    el.title = "Clica para editar";
+    el.innerHTML = `<b>“</b>${esc(n.text)}<b>”</b><button class="x" title="Apagar" aria-label="Apagar nota">×</button>`;
+    layer.appendChild(el);
+    place(el, x, y);
+    const openThis = ()=> openNoteEditor({ note:n, x, y, initial:n.text });
+    el.addEventListener("click", ev=>{ if(ev.target.closest(".x")) return; ev.stopPropagation(); openThis(); });
+    el.addEventListener("keydown", ev=>{ if(ev.key==="Enter" || ev.key===" "){ ev.preventDefault(); openThis(); } });
+    el.querySelector(".x").addEventListener("click", ev=>{ ev.stopPropagation(); closeEditor(); const i=annotations.indexOf(n); if(i>=0){ annotations.splice(i,1); saveNotes(); } render(); });
+  });
+
+  // liga hover/tap dos marcadores de crise
+  svg.querySelectorAll(".ev").forEach(c=>{
+    const i = +c.dataset.i;
+    c.addEventListener("mouseenter", ()=>{ if(!tipSticky && !editor) showTip(i, false); });
+    c.addEventListener("mouseleave", ()=>{ if(!tipSticky && !editor) hideTip(); });
+    c.addEventListener("click", ev=>{ ev.stopPropagation(); closeEditor(); showTip(i, true); });
+    c.addEventListener("keydown", ev=>{ if(ev.key==="Enter" || ev.key===" "){ ev.preventDefault(); closeEditor(); showTip(i, true); const b = tip.querySelector(".edit"); if(b) b.focus(); } });
+  });
+
+  // mantém um editor aberto ancorado ao seu ponto (ex.: quando o gráfico muda de tamanho)
+  if(editor && editorAnchor){
+    place(editor, xScale(editorAnchor.t), Math.max(70, yScale(sampleV(editorAnchor.t))));
+  }
+}
+
+// posiciona um elemento overlay acima do ponto, sem sair do gráfico
+function place(el, x, y){
+  const hw = (el.offsetWidth || 140)/2 + 6;      // meia-largura real → não sai do ecrã
+  el.style.left = Math.max(hw, Math.min(W - hw, x)) + "px";
+  let top = y - 12;
+  if(top < 54) top = y + 62;          // se não cabe em cima, vai para baixo
+  el.style.top = top + "px";
+  el.style.transform = (top > y) ? "translate(-50%,0)" : "translate(-50%,-100%)";
+}
+
+function showTip(i, sticky){
+  const x = xScale(evTime(i)), y = yScale(sampleV(evTime(i)));
+  let html = `<b>${evTime(i)|0} · ${esc(evTitle(i))}</b><span>${esc(evText(i))}</span>`;
+  if(sticky){
+    html += `<div class="acts"><button class="tbtn edit" type="button">✎ Editar</button>`;
+    if(isEdited(i)) html += `<button class="tbtn reset" type="button">↺ Repor</button>`;
+    html += `</div>`;
+  }
+  tip.innerHTML = html;
+  place(tip, x, y);
+  tip.classList.add("show");
+  tipSticky = !!sticky; tipIndex = i;
+  if(sticky){
+    const eb = tip.querySelector(".edit");
+    if(eb) eb.addEventListener("click", ev=>{ ev.stopPropagation(); openCrisisEditor(i, x, y); });
+    const rb = tip.querySelector(".reset");
+    if(rb) rb.addEventListener("click", ev=>{ ev.stopPropagation(); delete eventOverrides[i]; saveOverrides(); hideTip(); render(); });
+  }
+}
+function hideTip(){ tip.classList.remove("show"); tipSticky = false; tipIndex = null; }
+
+/* ---------- 7. Interação: escrever e editar no gráfico ---------- */
+let editor = null;
+function closeEditor(){ if(editor){ editor.remove(); editor = null; } editorAnchor = null; }
+
+// editor de nota do utilizador — nova (opts.t) ou existente (opts.note = referência ao objeto)
+function openNoteEditor(opts){
+  closeEditor(); hideTip();
+  const note = opts.note || null;                 // identidade estável (não índice)
+  const editing = note != null;
+  editor = document.createElement("div");
+  editor.className = "editor";
+  editor.innerHTML = `<input type="text" maxlength="90" placeholder="O teu bear-case aqui…">
+    <div class="row">
+      <button class="ebtn save" type="button">${editing?"Guardar":"Fixar"}</button>
+      ${editing?'<button class="ebtn del" type="button">Apagar</button>':''}
+      <button class="ebtn cancel" type="button">Cancelar</button>
+    </div>
+    <div class="hintline">Enter para guardar · Esc para cancelar</div>`;
+  editorAnchor = { t: editing ? note.t : opts.t };
+  layer.appendChild(editor);
+  place(editor, opts.x, Math.max(70, opts.y));
+  const input = editor.querySelector("input");
+  input.value = opts.initial || "";
+  input.focus(); input.select();
+  const commit = ()=>{
+    const v = input.value.trim();
+    if(editing){
+      if(v){ note.text = v; saveNotes(); render(); }   // vazio → mantém inalterada (usa Apagar para remover)
+    } else if(v){ addNote(opts.t, v); }
+    closeEditor();
+  };
+  input.addEventListener("keydown", ev=>{
+    if(ev.key === "Enter"){ ev.preventDefault(); commit(); }
+    else if(ev.key === "Escape"){ closeEditor(); }
+  });
+  editor.querySelector(".save").addEventListener("click", commit);
+  editor.querySelector(".cancel").addEventListener("click", closeEditor);
+  const del = editor.querySelector(".del");
+  if(del) del.addEventListener("click", ()=>{ const i=annotations.indexOf(note); if(i>=0){ annotations.splice(i,1); saveNotes(); } closeEditor(); render(); });
+}
+
+// editor de crise histórica — título + texto, guardado como override no browser
+function openCrisisEditor(i, x, y){
+  closeEditor(); hideTip();
+  editor = document.createElement("div");
+  editor.className = "editor wide";
+  const ov = isEdited(i);
+  editor.innerHTML = `
+    <input type="text" class="title" maxlength="60" placeholder="Título da crise">
+    <textarea class="body" maxlength="240" rows="3" placeholder="A narrativa de pânico…"></textarea>
+    <div class="row">
+      <button class="ebtn save" type="button">Guardar</button>
+      ${ov?'<button class="ebtn reset" type="button">↺ Repor original</button>':''}
+      <button class="ebtn cancel" type="button">Cancelar</button>
+    </div>
+    <div class="hintline">${evTime(i)|0} · guardado só no teu browser</div>`;
+  editorAnchor = { t: evTime(i) };
+  layer.appendChild(editor);
+  place(editor, x, Math.max(84, y));
+  const tI = editor.querySelector(".title"), bI = editor.querySelector(".body");
+  tI.value = evTitle(i); bI.value = evText(i);
+  tI.focus(); tI.select();
+  const commit = ()=>{
+    const ft = tI.value.trim() || EVENTS[i][1], fb = bI.value.trim() || EVENTS[i][2];   // valores efetivos (com fallback)
+    if(ft === EVENTS[i][1] && fb === EVENTS[i][2]) delete eventOverrides[i];             // iguais ao original → remove override
+    else eventOverrides[i] = { titulo: ft, texto: fb };
+    saveOverrides(); closeEditor(); render();
+  };
+  editor.querySelector(".save").addEventListener("click", commit);
+  editor.querySelector(".cancel").addEventListener("click", closeEditor);
+  const rb = editor.querySelector(".reset");
+  if(rb) rb.addEventListener("click", ()=>{ delete eventOverrides[i]; saveOverrides(); closeEditor(); render(); });
+  tI.addEventListener("keydown", ev=>{ if(ev.key==="Enter"){ ev.preventDefault(); commit(); } else if(ev.key==="Escape"){ closeEditor(); } });
+  bI.addEventListener("keydown", ev=>{ if(ev.key==="Enter" && (ev.metaKey||ev.ctrlKey)){ ev.preventDefault(); commit(); } else if(ev.key==="Escape"){ closeEditor(); } });
+}
+
+function addNote(t, text){
+  annotations.push({ t:+t.toFixed(3), text });
+  saveNotes();
+  render();
+}
+
+// clique no gráfico
+chart.addEventListener("click", ev=>{
+  if(ev.target.closest(".note, .editor, .tip, .ev")) return;   // cliques tratados noutro sítio
+  const r = chart.getBoundingClientRect();
+  const x = ev.clientX - r.left, y = ev.clientY - r.top;
+  if(x < M.l || x > W-M.r || y < M.t || y > H-M.b){ hideTip(); closeEditor(); return; }
+  const t = tFromX(x);
+  if(tip.classList.contains("show")){ hideTip(); return; }      // 1º toque fecha tooltip
+  if(placementText !== null){ closeEditor(); addNote(t, placementText); exitPlacement(); return; }
+  openNoteEditor({ x, y, t });
+});
+
+// clicar fora do gráfico fecha o editor / tooltip fixo
+document.addEventListener("pointerdown", ev=>{
+  if(ev.target.closest("#chart")) return;   // dentro do gráfico é tratado localmente
+  if(editor) closeEditor();
+  if(tipSticky) hideTip();
+});
+
+/* ---------- 8. Sugestões (chips) ---------- */
+const chipsBox = document.getElementById("chips");
+SUGESTOES.forEach(txt=>{
+  const b = document.createElement("button");
+  b.className = "chip"; b.textContent = txt;
+  b.addEventListener("click", ()=> enterPlacement(txt));
+  chipsBox.appendChild(b);
+});
+function enterPlacement(txt){
+  placementText = txt;
+  bannerText.textContent = "“" + txt + "”";
+  banner.classList.add("show");
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+function exitPlacement(){ placementText = null; banner.classList.remove("show"); }
+document.getElementById("bannerCancel").addEventListener("click", exitPlacement);
+
+/* ---------- 9. Controlos ---------- */
+const bLog = document.getElementById("scaleLog"), bLin = document.getElementById("scaleLin");
+function setScale(mode){
+  scaleMode = mode;
+  bLog.setAttribute("aria-pressed", mode==="log");
+  bLin.setAttribute("aria-pressed", mode==="linear");
+  render();
+}
+bLog.addEventListener("click", ()=>setScale("log"));
+bLin.addEventListener("click", ()=>setScale("linear"));
+
+// período (Máx / 10A / 5A / 1A)
+const rangeBtns = document.querySelectorAll("[data-range]");
+function setView(v){
+  view = v;
+  rangeBtns.forEach(b=> b.setAttribute("aria-pressed", b.dataset.range === v));
+  render();
+}
+rangeBtns.forEach(b=> b.addEventListener("click", ()=> setView(b.dataset.range)));
+
+document.getElementById("clearBtn").addEventListener("click", ()=>{
+  closeEditor();
+  if(!annotations.length) return;
+  if(confirm("Apagar todas as tuas notas?")){ annotations = []; saveNotes(); render(); }
+});
+
+// tema
+const THEME_KEY = "bear-graph:theme";
+(function initTheme(){ const t = localStorage.getItem(THEME_KEY); if(t) document.documentElement.setAttribute("data-theme", t); })();
+document.getElementById("themeBtn").addEventListener("click", ()=>{
+  const cur = document.documentElement.getAttribute("data-theme")
+    || (matchMedia("(prefers-color-scheme:dark)").matches ? "dark":"light");
+  const next = cur === "dark" ? "light":"dark";
+  document.documentElement.setAttribute("data-theme", next);
+  try{ localStorage.setItem(THEME_KEY, next); }catch(e){}
+  render();
+});
+
+/* ---------- 10. Arranque + responsivo ---------- */
+render();
+if(window.ResizeObserver){
+  new ResizeObserver(()=>{
+    const r = chart.getBoundingClientRect();
+    if(Math.abs(r.width - W) < 1 && Math.abs(r.height - H) < 1) return;  // ignora ticks sem mudança real
+    render();                                    // reposiciona notas, marcadores e editor aberto
+    if(tipSticky && tipIndex != null) showTip(tipIndex, true);   // reancorar tooltip fixo
+  }).observe(chart);
+} else window.addEventListener("resize", render);
+</script>
+</body>
+</html>
