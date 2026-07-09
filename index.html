@@ -186,6 +186,48 @@
     border-radius:999px; padding:7px 13px; transition:.12s;
   }
   .chip:hover{border-color:var(--user); color:var(--ink)}
+  .chip.gen{border-color:var(--user); color:var(--user); font-weight:700}
+  .chip.gen:hover{background:color-mix(in srgb,var(--user) 12%, var(--chip))}
+
+  /* cápsula do tempo */
+  section.capsule{margin-top:30px}
+  section.capsule h2{font-size:15px; margin:0 0 4px; letter-spacing:-.01em}
+  section.capsule p{margin:0 0 12px; color:var(--ink2); font-size:13px}
+  .capNotice{
+    display:none; margin:0 0 12px; padding:9px 13px; border-radius:10px; font-size:13px; color:var(--ink);
+    background:color-mix(in srgb,var(--user) 12%, var(--surface)); border:1px solid var(--user);
+  }
+  .capNotice.show{display:block}
+  .capForm{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:14px}
+  .capForm input{
+    flex:1 1 260px; min-width:0; font:inherit; font-size:13.5px; padding:8px 11px;
+    border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--ink);
+  }
+  .capForm select{
+    font:inherit; font-size:13px; padding:8px 10px; border-radius:10px;
+    border:1px solid var(--border); background:var(--surface); color:var(--ink); cursor:pointer;
+  }
+  .capForm input:focus, .capForm select:focus{outline:2px solid var(--user); outline-offset:1px}
+  .capList{display:flex; flex-direction:column; gap:8px}
+  .capItem{
+    display:flex; align-items:flex-start; gap:10px; padding:10px 12px;
+    border:1px solid var(--border); border-radius:12px; background:var(--surface);
+  }
+  .capItem.due{border-color:var(--user); box-shadow:0 0 0 2px color-mix(in srgb,var(--user) 22%, transparent)}
+  .capItem.resolved{opacity:.6}
+  .capItem .body{flex:1 1 auto; min-width:0}
+  .capItem .qt{font-size:13.5px; color:var(--ink); line-height:1.35}
+  .capItem .meta{font-size:11.5px; color:var(--muted); margin-top:3px}
+  .capItem .verdict{font-size:11.5px; font-weight:700; margin-top:4px}
+  .capItem .verdict.hit{color:var(--line)} .capItem .verdict.miss{color:var(--danger-ink)}
+  .capActions{display:flex; gap:6px; margin-top:7px}
+  .capbtn{
+    font:inherit; font-size:11.5px; font-weight:600; cursor:pointer; border:1px solid var(--border);
+    background:var(--chip); color:var(--chip-ink); border-radius:7px; padding:3px 10px;
+  }
+  .capbtn.hit{color:var(--line)} .capbtn.miss{color:var(--danger-ink)}
+  .capItem .capx{border:0; background:transparent; color:var(--muted); cursor:pointer; font-size:16px; line-height:1; padding:2px 4px}
+  .capItem .capx:hover{color:var(--crisis)}
 
   footer{margin-top:34px; color:var(--muted); font-size:11.5px; line-height:1.6}
   a{color:inherit}
@@ -249,6 +291,24 @@
     <h2>Sugestões de crises</h2>
     <p>Doses de pânico. Clica numa e carimba-a no gráfico.</p>
     <div class="chips" id="chips"></div>
+  </section>
+
+  <section class="capsule">
+    <h2>Cápsula do tempo</h2>
+    <p>Faz uma previsão com prazo. O site guarda-a e, quando a data chegar, lembra-te de vir ver se acertaste.</p>
+    <div class="capNotice" id="capNotice"></div>
+    <div class="capForm">
+      <input type="text" id="capText" maxlength="120" placeholder="A tua previsão de pânico…">
+      <select id="capHorizon" aria-label="Prazo da previsão">
+        <option value="3">daqui a 3 meses</option>
+        <option value="6">daqui a 6 meses</option>
+        <option value="12" selected>daqui a 1 ano</option>
+        <option value="24">daqui a 2 anos</option>
+        <option value="60">daqui a 5 anos</option>
+      </select>
+      <button class="btn" id="capAdd" type="button">Selar previsão</button>
+    </div>
+    <div class="capList" id="capList"></div>
   </section>
 
   <footer>
@@ -340,6 +400,19 @@ const SUGESTOES = [
   "Guerra geopolítica vai destruir tudo"
 ];
 
+/* ---------- 3b. Gerador aleatório de bear-cases ---------- */
+const GEN_SUB = [
+  "A Fed","A curva de juros invertida","A dívida nacional","A bolha da IA","O dólar","A travagem da China",
+  "O trading algorítmico","A bolha do investimento passivo","A reforma dos boomers","A tensão geopolítica",
+  "A sobrevalorização recorde","O crédito privado","A guerra das tarifas","O imobiliário comercial",
+  "A concentração nos 7 Magníficos","O fim do dinheiro barato","O indicador de Buffett","A inteligência artificial"
+];
+const GEN_VERB = ["vai destruir","vai afundar","vai rebentar com","vai fazer implodir","vai contaminar","vai matar","vai arrastar","vai deitar abaixo","vai pulverizar"];
+const GEN_OBJ  = ["o mercado","o S&P 500","tudo","a economia mundial","as ações","o sistema financeiro","as tuas poupanças","Wall Street"];
+const GEN_TAIL = [".",".","."," — desta vez a sério."," — pior que a dot-com."," — como em 2008."," — e ninguém está a ver."," — já esta semana."," — e vai ser rápido."," — o topo é já."];
+function randOf(a){ return a[Math.floor(Math.random()*a.length)]; }
+function genBearCase(){ return randOf(GEN_SUB) + " " + randOf(GEN_VERB) + " " + randOf(GEN_OBJ) + randOf(GEN_TAIL); }
+
 /* ---------- 4. Estado ---------- */
 const LS_KEY = "bear-graph:annotations";
 let scaleMode = "log";
@@ -350,6 +423,11 @@ function loadNotes(){ try{ const a = JSON.parse(localStorage.getItem(LS_KEY)); r
 function saveNotes(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(annotations)); }catch(e){ warnStorage(); } }
 let storageWarned = false;
 function warnStorage(){ if(storageWarned) return; storageWarned = true; try{ alert("As tuas notas/edições não puderam ser guardadas neste browser (armazenamento cheio ou navegação privada) — vão desaparecer ao recarregar."); }catch(e){} }
+
+// cápsulas do tempo — previsões com prazo
+const CAP_KEY = "bear-graph:capsules";
+let capsules = (function(){ try{ const a = JSON.parse(localStorage.getItem(CAP_KEY)); return Array.isArray(a) ? a : []; }catch(e){ return []; } })();
+function saveCapsules(){ try{ localStorage.setItem(CAP_KEY, JSON.stringify(capsules)); }catch(e){ warnStorage(); } }
 
 // esconder/mostrar o texto das notas do utilizador (os pontos azuis ficam sempre visíveis)
 const HIDE_KEY = "bear-graph:labelsHidden";
@@ -757,8 +835,12 @@ document.addEventListener("pointerdown", ev=>{
   if(tipSticky) hideTip();
 });
 
-/* ---------- 8. Sugestões (chips) ---------- */
+/* ---------- 8. Sugestões (chips) + gerador ---------- */
 const chipsBox = document.getElementById("chips");
+const genChip = document.createElement("button");
+genChip.className = "chip gen"; genChip.type = "button"; genChip.textContent = "Gerar crise aleatória";
+genChip.addEventListener("click", ()=> enterPlacement(genBearCase()));
+chipsBox.appendChild(genChip);
 SUGESTOES.forEach(txt=>{
   const b = document.createElement("button");
   b.className = "chip"; b.textContent = txt;
@@ -825,7 +907,100 @@ document.getElementById("themeBtn").addEventListener("click", ()=>{
   render();
 });
 
-/* ---------- 10. Arranque + responsivo ---------- */
+/* ---------- 10. Cápsula do tempo ---------- */
+const capNotice = document.getElementById("capNotice");
+const capList = document.getElementById("capList");
+const capText = document.getElementById("capText");
+const capHorizon = document.getElementById("capHorizon");
+const capAdd = document.getElementById("capAdd");
+
+function addMonths(date, months){ const d = new Date(date.getTime()); d.setMonth(d.getMonth() + months); return d; }
+function fmtFullDate(date){ return MESES[date.getMonth()] + " de " + date.getFullYear(); }
+
+function addCapsule(){
+  const text = capText.value.trim();
+  if(!text) return;
+  const months = parseInt(capHorizon.value, 10);
+  const now = new Date();
+  const due = addMonths(now, months);
+  capsules.push({
+    id: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+    text, createdISO: now.toISOString(), dueISO: due.toISOString(), resolved: null
+  });
+  saveCapsules();
+  capText.value = "";
+  renderCapsules();
+}
+capAdd.addEventListener("click", addCapsule);
+capText.addEventListener("keydown", ev=>{ if(ev.key === "Enter"){ ev.preventDefault(); addCapsule(); } });
+
+function resolveCapsule(id, verdict){
+  const c = capsules.find(c=>c.id === id);
+  if(!c) return;
+  c.resolved = verdict;
+  saveCapsules();
+  renderCapsules();
+}
+function deleteCapsule(id){
+  const i = capsules.findIndex(c=>c.id === id);
+  if(i >= 0){ capsules.splice(i, 1); saveCapsules(); renderCapsules(); }
+}
+
+function renderCapsules(){
+  const now = new Date();
+  capList.innerHTML = "";
+
+  const dueCount = capsules.filter(c=> !c.resolved && new Date(c.dueISO) <= now).length;
+  if(dueCount > 0){
+    capNotice.textContent = dueCount === 1
+      ? "Tens 1 previsão pronta para avaliar."
+      : "Tens " + dueCount + " previsões prontas para avaliar.";
+    capNotice.classList.add("show");
+  } else {
+    capNotice.classList.remove("show");
+  }
+
+  const sorted = [...capsules].sort((a,b)=> new Date(b.createdISO) - new Date(a.createdISO));
+  sorted.forEach(c=>{
+    const due = new Date(c.dueISO);
+    const isDue = !c.resolved && due <= now;
+    const el = document.createElement("div");
+    el.className = "capItem" + (isDue ? " due" : "") + (c.resolved ? " resolved" : "");
+
+    let metaLine, verdictLine = "", actionsLine = "";
+    if(c.resolved){
+      metaLine = "Previsto para " + fmtFullDate(due);
+      verdictLine = `<div class="verdict ${c.resolved}">${c.resolved === "hit" ? "Aconteceu" : "Não aconteceu"}</div>`;
+    } else if(isDue){
+      metaLine = "Prazo chegou (" + fmtFullDate(due) + ") — aconteceu?";
+      actionsLine = `<div class="capActions">
+        <button class="capbtn hit" type="button" data-act="hit">Aconteceu</button>
+        <button class="capbtn miss" type="button" data-act="miss">Não aconteceu</button>
+      </div>`;
+    } else {
+      metaLine = "Prazo: " + fmtFullDate(due);
+    }
+
+    el.innerHTML = `<div class="body">
+        <div class="qt">"${esc(c.text)}"</div>
+        <div class="meta">${metaLine}</div>
+        ${verdictLine}
+        ${actionsLine}
+      </div>
+      <button class="capx" type="button" title="Apagar" aria-label="Apagar previsão">×</button>`;
+
+    el.querySelector(".capx").addEventListener("click", ()=>{ if(confirm("Apagar esta previsão?")) deleteCapsule(c.id); });
+    const hitBtn = el.querySelector('[data-act="hit"]');
+    if(hitBtn) hitBtn.addEventListener("click", ()=> resolveCapsule(c.id, "hit"));
+    const missBtn = el.querySelector('[data-act="miss"]');
+    if(missBtn) missBtn.addEventListener("click", ()=> resolveCapsule(c.id, "miss"));
+
+    capList.appendChild(el);
+  });
+}
+renderCapsules();
+
+/* ---------- 11. Arranque + responsivo ---------- */
 render();
 if(window.ResizeObserver){
   new ResizeObserver(()=>{
