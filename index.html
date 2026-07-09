@@ -96,7 +96,7 @@
     opacity:0; transition:opacity .08s; pointer-events:none; z-index:2; transform:translate(-50%,-50%);
   }
   .readout{
-    position:absolute; transform:translate(-50%,0); background:var(--surface); border:1px solid var(--border); border-radius:6px;
+    position:absolute; width:max-content; transform:translate(-50%,0); background:var(--surface); border:1px solid var(--border); border-radius:6px;
     padding:2px 8px; font-size:11px; font-weight:700; color:var(--ink); box-shadow:var(--shadow);
     opacity:0; transition:opacity .08s; pointer-events:none; z-index:2; white-space:nowrap;
   }
@@ -105,7 +105,7 @@
 
   /* tooltip for historical crises */
   .tip{
-    position:absolute; max-width:250px; transform:translate(-50%,-100%);
+    position:absolute; width:max-content; max-width:250px; transform:translate(-50%,-100%);
     background:var(--surface); border:1px solid var(--border); border-radius:10px;
     padding:9px 11px; box-shadow:var(--shadow); font-size:12.5px; z-index:6;
     opacity:0; visibility:hidden; transition:opacity .12s;
@@ -118,7 +118,7 @@
 
   /* user annotation pill */
   .note{
-    position:absolute; transform:translate(-50%,-100%); max-width:190px;
+    position:absolute; width:max-content; transform:translate(-50%,-100%); max-width:190px;
     background:var(--surface); border:1px solid var(--user); border-radius:9px;
     padding:5px 9px; font-size:12.5px; color:var(--ink); box-shadow:var(--shadow);
     z-index:5; white-space:normal; line-height:1.35; cursor:pointer;
@@ -576,10 +576,13 @@ function render(){
   crosshair.style.height = p.h.toFixed(1) + "px";
 }
 
-// posiciona um elemento overlay acima do ponto, sem sair do gráfico
+// posiciona um elemento overlay centrado no ponto — pode sair do gráfico,
+// só é impedido de sair do ecrã (evita scroll horizontal da página)
 function place(el, x, y){
-  const hw = (el.offsetWidth || 140)/2 + 6;      // meia-largura real → não sai do ecrã
-  el.style.left = Math.max(hw, Math.min(W - hw, x)) + "px";
+  const hw = (el.offsetWidth || 140)/2 + 8;
+  const r = chart.getBoundingClientRect();
+  const absX = Math.max(hw, Math.min(window.innerWidth - hw, r.left + x));
+  el.style.left = (absX - r.left) + "px";
   let top = y - 12;
   if(top < 54) top = y + 62;          // se não cabe em cima, vai para baixo
   el.style.top = top + "px";
