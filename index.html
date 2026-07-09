@@ -733,7 +733,7 @@ chart.addEventListener("mousemove", ev=>{
   curveDot.style.opacity = 0.75;
 
   readout.innerHTML = fmtMonth(t) + `<span class="rsep">·</span><span class="rv">` + Math.round(v).toLocaleString("pt-PT") + `</span>`;
-  readout.style.top = (M.t + 6) + "px";
+  readout.style.top = "2px";
   const hw = readout.offsetWidth/2 + 4;
   readout.style.left = Math.max(M.l + hw, Math.min(W - M.r - hw, x)) + "px";
   readout.style.opacity = 1;
