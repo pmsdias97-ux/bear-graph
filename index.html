@@ -88,8 +88,8 @@
     opacity:0; transition:opacity .08s; pointer-events:none; z-index:1;
   }
   .curveDot{
-    position:absolute; width:8px; height:8px; border-radius:50%; background:var(--line);
-    box-shadow:0 0 0 1px var(--line); border:2px solid var(--surface);
+    position:absolute; width:5px; height:5px; border-radius:50%; background:var(--line);
+    border:1px solid var(--surface);
     opacity:0; transition:opacity .08s; pointer-events:none; z-index:2; transform:translate(-50%,-50%);
   }
   .readout{
@@ -733,7 +733,7 @@ chart.addEventListener("mousemove", ev=>{
 
   curveDot.style.left = x + "px";
   curveDot.style.top = vy + "px";
-  curveDot.style.opacity = 1;
+  curveDot.style.opacity = 0.75;
 
   chDate.textContent = fmtMonth(t);
   chDate.style.top = (H - M.b + 4) + "px";
