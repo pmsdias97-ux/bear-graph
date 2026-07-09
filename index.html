@@ -93,12 +93,12 @@
     opacity:0; transition:opacity .08s; pointer-events:none; z-index:2; transform:translate(-50%,-50%);
   }
   .readout{
-    position:absolute; background:var(--surface); border:1px solid var(--border); border-radius:6px;
-    padding:2px 7px; font-size:11px; font-weight:700; color:var(--ink); box-shadow:var(--shadow);
+    position:absolute; transform:translate(-50%,0); background:var(--surface); border:1px solid var(--border); border-radius:6px;
+    padding:2px 8px; font-size:11px; font-weight:700; color:var(--ink); box-shadow:var(--shadow);
     opacity:0; transition:opacity .08s; pointer-events:none; z-index:2; white-space:nowrap;
   }
-  #chDate{ transform:translate(-50%,0); }
-  #chVal{ transform:translate(0,-50%); color:var(--line); }
+  .readout .rv{color:var(--line)}
+  .readout .rsep{color:var(--muted); font-weight:400; margin:0 2px}
 
   /* tooltip for historical crises */
   .tip{
@@ -221,8 +221,7 @@
       <div class="layer" id="layer">
         <div class="crosshair" id="crosshair"></div>
         <div class="curveDot" id="curveDot"></div>
-        <div class="readout" id="chDate"></div>
-        <div class="readout" id="chVal"></div>
+        <div class="readout" id="readout"></div>
         <div class="tip" id="tip"></div>
         <div class="tip noteTip" id="ntip"></div>
       </div>
@@ -374,8 +373,7 @@ const tip   = document.getElementById("tip");
 const ntip  = document.getElementById("ntip");
 const crosshair = document.getElementById("crosshair");
 const curveDot = document.getElementById("curveDot");
-const chDate = document.getElementById("chDate");
-const chVal = document.getElementById("chVal");
+const readout = document.getElementById("readout");
 const banner = document.getElementById("banner");
 const bannerText = document.getElementById("bannerText");
 let tipSticky = false, tipIndex = null, editorAnchor = null;
@@ -718,8 +716,7 @@ chart.addEventListener("click", ev=>{
 
 // linha-guia vertical + leitura da data/valor em tempo real, ao acompanhar o cursor
 function hideReadout(){
-  crosshair.style.opacity = 0; curveDot.style.opacity = 0;
-  chDate.style.opacity = 0; chVal.style.opacity = 0;
+  crosshair.style.opacity = 0; curveDot.style.opacity = 0; readout.style.opacity = 0;
 }
 chart.addEventListener("mousemove", ev=>{
   const r = chart.getBoundingClientRect();
@@ -735,16 +732,11 @@ chart.addEventListener("mousemove", ev=>{
   curveDot.style.top = vy + "px";
   curveDot.style.opacity = 0.75;
 
-  chDate.textContent = fmtMonth(t);
-  chDate.style.top = (H - M.b + 4) + "px";
-  const hw = chDate.offsetWidth/2 + 4;
-  chDate.style.left = Math.max(M.l + hw, Math.min(W - M.r - hw, x)) + "px";
-  chDate.style.opacity = 1;
-
-  chVal.textContent = Math.round(v).toLocaleString("pt-PT");
-  chVal.style.left = "4px";
-  chVal.style.top = Math.max(M.t + 10, Math.min(H - M.b - 10, vy)) + "px";
-  chVal.style.opacity = 1;
+  readout.innerHTML = fmtMonth(t) + `<span class="rsep">·</span><span class="rv">` + Math.round(v).toLocaleString("pt-PT") + `</span>`;
+  readout.style.top = (M.t + 6) + "px";
+  const hw = readout.offsetWidth/2 + 4;
+  readout.style.left = Math.max(M.l + hw, Math.min(W - M.r - hw, x)) + "px";
+  readout.style.opacity = 1;
 });
 chart.addEventListener("mouseleave", hideReadout);
 
