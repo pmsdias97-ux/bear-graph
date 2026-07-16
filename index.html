@@ -208,13 +208,15 @@
     border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--ink);
   }
   .capForm input#capWho{flex:0 1 130px}
-  .capForm input#capDue{flex:0 1 165px; cursor:pointer}
+  .capForm input#capDue{flex:0 1 140px; padding-right:6px; cursor:pointer}
+  .capForm input#capDue::-webkit-calendar-picker-indicator{margin-left:2px; padding:2px}
   .capForm select{
     font:inherit; font-size:13px; padding:8px 10px; border-radius:10px;
     border:1px solid var(--border); background:var(--surface); color:var(--ink); cursor:pointer;
   }
   .capForm select#capWhere{flex:0 1 120px}
   .capForm input:focus, .capForm select:focus{outline:2px solid var(--user); outline-offset:1px}
+  #capAdd{min-width:170px; justify-content:center}
   .capList{display:flex; flex-direction:column; gap:8px}
   .capItem{
     display:flex; align-items:flex-start; gap:10px; padding:10px 12px;
