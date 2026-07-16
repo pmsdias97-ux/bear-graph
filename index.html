@@ -207,12 +207,13 @@
     flex:1 1 260px; min-width:0; font:inherit; font-size:13.5px; padding:8px 11px;
     border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--ink);
   }
-  .capForm input#capWho{flex:0 1 150px}
+  .capForm input#capWho{flex:0 1 130px}
   .capForm input#capDue{flex:0 1 165px; cursor:pointer}
   .capForm select{
     font:inherit; font-size:13px; padding:8px 10px; border-radius:10px;
     border:1px solid var(--border); background:var(--surface); color:var(--ink); cursor:pointer;
   }
+  .capForm select#capWhere{flex:0 1 120px}
   .capForm input:focus, .capForm select:focus{outline:2px solid var(--user); outline-offset:1px}
   .capList{display:flex; flex-direction:column; gap:8px}
   .capItem{
@@ -307,6 +308,11 @@
     <div class="capForm">
       <input type="text" id="capText" maxlength="120" placeholder="A tua previsão de pânico…">
       <input type="text" id="capWho" maxlength="40" placeholder="Quem">
+      <select id="capWhere" aria-label="Onde">
+        <option value="">Onde</option>
+        <option value="TikTok">TikTok</option>
+        <option value="YouTube">YouTube</option>
+      </select>
       <input type="date" id="capDue" aria-label="Data limite da previsão">
       <button class="btn" id="capAdd" type="button">Selar previsão</button>
     </div>
@@ -914,6 +920,7 @@ const capNotice = document.getElementById("capNotice");
 const capList = document.getElementById("capList");
 const capText = document.getElementById("capText");
 const capWho = document.getElementById("capWho");
+const capWhere = document.getElementById("capWhere");
 const capDue = document.getElementById("capDue");
 const capAdd = document.getElementById("capAdd");
 
@@ -939,14 +946,15 @@ function addCapsule(){
   const text = capText.value.trim();
   if(!text || !capDue.value) return;
   const who = capWho.value.trim();
+  const where = capWhere.value;
   const now = new Date();
   const due = parseDateInputValue(capDue.value);
   capsules.push({
     id: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
-    text, who, createdISO: now.toISOString(), dueISO: due.toISOString(), resolved: null
+    text, who, where, createdISO: now.toISOString(), dueISO: due.toISOString(), resolved: null
   });
   saveCapsules();
-  capText.value = ""; capWho.value = "";
+  capText.value = ""; capWho.value = ""; capWhere.value = "";
   capDue.value = toDateInputValue(addMonths(now, 12));
   renderCapsules();
 }
@@ -1001,7 +1009,11 @@ function renderCapsules(){
       metaLine = "Prazo: " + fmtFullDate(due);
     }
 
-    const whoLine = c.who ? ` <span class="capwho">— ${esc(c.who)}</span>` : "";
+    let attribution = "";
+    if(c.who && c.where) attribution = `— ${esc(c.who)} (${esc(c.where)})`;
+    else if(c.who) attribution = `— ${esc(c.who)}`;
+    else if(c.where) attribution = `(${esc(c.where)})`;
+    const whoLine = attribution ? ` <span class="capwho">${attribution}</span>` : "";
     el.innerHTML = `<div class="body">
         <div class="qt">"${esc(c.text)}"${whoLine}</div>
         <div class="meta">${metaLine}</div>
