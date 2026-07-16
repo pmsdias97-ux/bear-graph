@@ -18,6 +18,7 @@
 <meta name="twitter:image" content="https://pmsdias97-ux.github.io/bear-graph/panda.webp">
 <style>
   :root{
+    color-scheme:light;
     --bg:#f7f7f5; --surface:#ffffff; --ink:#18181b; --ink2:#52525b; --muted:#a1a1aa;
     --grid:#eceae7; --axis:#d6d3d1; --line:#15803d; --area:#16a34a;
     --crisis:#dc2626; --user:#2563eb; --chip:#f1f1ef; --chip-ink:#3f3f46;
@@ -25,6 +26,7 @@
   }
   @media (prefers-color-scheme:dark){
     :root{
+      color-scheme:dark;
       --bg:#0c0e12; --surface:#14171d; --ink:#f4f4f5; --ink2:#a1a1aa; --muted:#71717a;
       --grid:#22262d; --axis:#3a3f47; --line:#4ade80; --area:#22c55e;
       --crisis:#f87171; --user:#60a5fa; --chip:#1c2027; --chip-ink:#d4d4d8;
@@ -32,12 +34,14 @@
     }
   }
   :root[data-theme="light"]{
+    color-scheme:light;
     --bg:#f7f7f5; --surface:#ffffff; --ink:#18181b; --ink2:#52525b; --muted:#a1a1aa;
     --grid:#eceae7; --axis:#d6d3d1; --line:#15803d; --area:#16a34a;
     --crisis:#dc2626; --user:#2563eb; --chip:#f1f1ef; --chip-ink:#3f3f46;
     --border:#e6e4e1; --shadow:0 6px 24px rgba(0,0,0,.10); --danger-ink:#b91c1c; --save-ink:#ffffff;
   }
   :root[data-theme="dark"]{
+    color-scheme:dark;
     --bg:#0c0e12; --surface:#14171d; --ink:#f4f4f5; --ink2:#a1a1aa; --muted:#71717a;
     --grid:#22262d; --axis:#3a3f47; --line:#4ade80; --area:#22c55e;
     --crisis:#f87171; --user:#60a5fa; --chip:#1c2027; --chip-ink:#d4d4d8;
@@ -203,6 +207,8 @@
     flex:1 1 260px; min-width:0; font:inherit; font-size:13.5px; padding:8px 11px;
     border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--ink);
   }
+  .capForm input#capWho{flex:0 1 150px}
+  .capForm input#capDue{flex:0 1 165px; cursor:pointer}
   .capForm select{
     font:inherit; font-size:13px; padding:8px 10px; border-radius:10px;
     border:1px solid var(--border); background:var(--surface); color:var(--ink); cursor:pointer;
@@ -217,6 +223,7 @@
   .capItem.resolved{opacity:.6}
   .capItem .body{flex:1 1 auto; min-width:0}
   .capItem .qt{font-size:13.5px; color:var(--ink); line-height:1.35}
+  .capItem .qt .capwho{color:var(--muted); font-weight:600}
   .capItem .meta{font-size:11.5px; color:var(--muted); margin-top:3px}
   .capItem .verdict{font-size:11.5px; font-weight:700; margin-top:4px}
   .capItem .verdict.hit{color:var(--line)} .capItem .verdict.miss{color:var(--danger-ink)}
@@ -299,13 +306,8 @@
     <div class="capNotice" id="capNotice"></div>
     <div class="capForm">
       <input type="text" id="capText" maxlength="120" placeholder="A tua previsão de pânico…">
-      <select id="capHorizon" aria-label="Prazo da previsão">
-        <option value="3">daqui a 3 meses</option>
-        <option value="6">daqui a 6 meses</option>
-        <option value="12" selected>daqui a 1 ano</option>
-        <option value="24">daqui a 2 anos</option>
-        <option value="60">daqui a 5 anos</option>
-      </select>
+      <input type="text" id="capWho" maxlength="40" placeholder="Quem">
+      <input type="date" id="capDue" aria-label="Data limite da previsão">
       <button class="btn" id="capAdd" type="button">Selar previsão</button>
     </div>
     <div class="capList" id="capList"></div>
@@ -911,28 +913,46 @@ document.getElementById("themeBtn").addEventListener("click", ()=>{
 const capNotice = document.getElementById("capNotice");
 const capList = document.getElementById("capList");
 const capText = document.getElementById("capText");
-const capHorizon = document.getElementById("capHorizon");
+const capWho = document.getElementById("capWho");
+const capDue = document.getElementById("capDue");
 const capAdd = document.getElementById("capAdd");
 
 function addMonths(date, months){ const d = new Date(date.getTime()); d.setMonth(d.getMonth() + months); return d; }
-function fmtFullDate(date){ return MESES[date.getMonth()] + " de " + date.getFullYear(); }
+function toDateInputValue(date){
+  return date.getFullYear() + "-" + String(date.getMonth()+1).padStart(2,"0") + "-" + String(date.getDate()).padStart(2,"0");
+}
+// interpreta "YYYY-MM-DD" como meia-noite LOCAL (não UTC) para evitar saltar de dia consoante o fuso horário
+function parseDateInputValue(v){
+  const [y,m,d] = v.split("-").map(Number);
+  return new Date(y, m-1, d);
+}
+function fmtFullDate(date){ return date.getDate() + " de " + MESES[date.getMonth()] + " de " + date.getFullYear(); }
+
+// data mínima = hoje; valor por defeito = daqui a 1 ano (mantém o antigo prazo pré-selecionado)
+(function initCapDue(){
+  const today = new Date();
+  capDue.min = toDateInputValue(today);
+  capDue.value = toDateInputValue(addMonths(today, 12));
+})();
 
 function addCapsule(){
   const text = capText.value.trim();
-  if(!text) return;
-  const months = parseInt(capHorizon.value, 10);
+  if(!text || !capDue.value) return;
+  const who = capWho.value.trim();
   const now = new Date();
-  const due = addMonths(now, months);
+  const due = parseDateInputValue(capDue.value);
   capsules.push({
     id: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
-    text, createdISO: now.toISOString(), dueISO: due.toISOString(), resolved: null
+    text, who, createdISO: now.toISOString(), dueISO: due.toISOString(), resolved: null
   });
   saveCapsules();
-  capText.value = "";
+  capText.value = ""; capWho.value = "";
+  capDue.value = toDateInputValue(addMonths(now, 12));
   renderCapsules();
 }
 capAdd.addEventListener("click", addCapsule);
 capText.addEventListener("keydown", ev=>{ if(ev.key === "Enter"){ ev.preventDefault(); addCapsule(); } });
+capWho.addEventListener("keydown", ev=>{ if(ev.key === "Enter"){ ev.preventDefault(); addCapsule(); } });
 
 function resolveCapsule(id, verdict){
   const c = capsules.find(c=>c.id === id);
@@ -981,8 +1001,9 @@ function renderCapsules(){
       metaLine = "Prazo: " + fmtFullDate(due);
     }
 
+    const whoLine = c.who ? ` <span class="capwho">— ${esc(c.who)}</span>` : "";
     el.innerHTML = `<div class="body">
-        <div class="qt">"${esc(c.text)}"</div>
+        <div class="qt">"${esc(c.text)}"${whoLine}</div>
         <div class="meta">${metaLine}</div>
         ${verdictLine}
         ${actionsLine}
