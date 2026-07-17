@@ -228,11 +228,13 @@
     border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--ink);
   }
   .capForm input#capWho{flex:0 1 130px}
+  .capForm input::placeholder{color:var(--muted); opacity:1}
   .capForm select{
     font:inherit; font-size:13px; padding:8px 10px; border-radius:10px;
     border:1px solid var(--border); background:var(--surface); color:var(--ink); cursor:pointer;
   }
   .capForm select#capWhere{flex:0 1 120px}
+  .capForm select.placeholder{color:var(--muted)}
   .capForm input:focus, .capForm select:focus{outline:2px solid var(--user); outline-offset:1px}
   #capAdd{min-width:170px; justify-content:center}
 
@@ -1079,9 +1081,11 @@ const capList = document.getElementById("capList");
 const capText = document.getElementById("capText");
 const capWho = document.getElementById("capWho");
 const capWhere = document.getElementById("capWhere");
+function syncCapWherePlaceholder(){ capWhere.classList.toggle("placeholder", capWhere.value === ""); }
+capWhere.addEventListener("change", syncCapWherePlaceholder);
+syncCapWherePlaceholder();
 const capAdd = document.getElementById("capAdd");
 
-function addMonths(date, months){ const d = new Date(date.getTime()); d.setMonth(d.getMonth() + months); return d; }
 function fmtFullDate(date){ return date.getDate() + " de " + MESES[date.getMonth()] + " de " + date.getFullYear(); }
 function fmtDDMMYYYY(date){
   return String(date.getDate()).padStart(2,"0") + "/" + String(date.getMonth()+1).padStart(2,"0") + "/" + date.getFullYear();
@@ -1125,7 +1129,9 @@ function renderDatePicker(){
     const cls = ["dpDay", isToday?"today":"", isSelected?"selected":""].filter(Boolean).join(" ");
     html += `<button type="button" class="${cls}" data-d="${d}"${isPast?" disabled":""}>${d}</button>`;
   }
-  const trailing = (7 - (startOffset + daysInMonth) % 7) % 7;
+  // sempre 6 semanas (42 células) — a grelha nunca muda de altura entre meses,
+  // por isso os cliques ficam sempre na mesma posição ao avançar/recuar
+  const trailing = 42 - startOffset - daysInMonth;
   for(let d=1; d<=trailing; d++){
     html += `<button type="button" class="dpDay other" disabled>${d}</button>`;
   }
@@ -1174,7 +1180,7 @@ datePopover.addEventListener("click", ev=> ev.stopPropagation());
 document.addEventListener("pointerdown", ev=>{ if(!dateField.contains(ev.target)) closeDatePicker(); });
 document.addEventListener("keydown", ev=>{ if(ev.key === "Escape") closeDatePicker(); });
 
-selectDateSilently(addMonths(new Date(), 12));   // valor por defeito = daqui a 1 ano
+selectDateSilently(new Date());   // valor por defeito = hoje
 
 function addCapsule(){
   const text = capText.value.trim();
@@ -1190,8 +1196,8 @@ function addCapsule(){
     text, who, where, createdISO: now.toISOString(), dueISO: capDueDate.toISOString(), resolved: null
   });
   saveCapsules();
-  capText.value = ""; capWho.value = ""; capWhere.value = "";
-  selectDateSilently(addMonths(now, 12));
+  capText.value = ""; capWho.value = ""; capWhere.value = ""; syncCapWherePlaceholder();
+  selectDateSilently(now);
   renderCapsules();
 }
 capAdd.addEventListener("click", addCapsule);
