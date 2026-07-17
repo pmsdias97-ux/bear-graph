@@ -1403,7 +1403,11 @@ function renderCapsules(){
     const hitBtn = el.querySelector('[data-act="hit"]');
     if(hitBtn) hitBtn.addEventListener("click", ()=> resolveCapsule(c.id, "hit"));
     const missBtn = el.querySelector('[data-act="miss"]');
-    if(missBtn) missBtn.addEventListener("click", ()=>{ mockCapsuleFail(el); resolveCapsule(c.id, "miss"); });
+    if(missBtn) missBtn.addEventListener("click", ()=>{
+      mockCapsuleFail(el);
+      resolveCapsule(c.id, "miss");
+      setTimeout(()=> showCertificate(c), 700);   // deixa a troça (confetti/toast) tocar primeiro
+    });
     const certBtn = el.querySelector('[data-act="cert"]');
     if(certBtn) certBtn.addEventListener("click", ()=> showCertificate(c));
 
