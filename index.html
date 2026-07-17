@@ -1217,15 +1217,6 @@ function deleteCapsule(id){
 }
 
 /* ---------- 10b. Troça ao falhar uma previsão ---------- */
-const MOCK_LINES = [
-  "Mais uma para a conta.",
-  "Consistência, pelo menos.",
-  "O gráfico agradece.",
-  "Continua a tentar.",
-  "Isso também não aconteceu.",
-  "O urso volta a perder.",
-  "Zero por enquanto."
-];
 let toastEl = null, toastTimer = null;
 function showToast(msg){
   if(!toastEl){ toastEl = document.createElement("div"); toastEl.className = "toast"; document.body.appendChild(toastEl); }
@@ -1253,7 +1244,6 @@ function spawnConfetti(originEl){
 }
 function mockCapsuleFail(el){
   spawnConfetti(el);
-  showToast(MOCK_LINES[Math.floor(Math.random()*MOCK_LINES.length)]);
 }
 
 /* ---------- 10c. Certificado de previsão falhada ---------- */
@@ -1378,7 +1368,7 @@ function renderCapsules(){
       metaLine = "Previsto para " + fmtFullDate(due);
       verdictLine = `<div class="verdict ${c.resolved}">${c.resolved === "hit" ? "Aconteceu" : "Não aconteceu"}</div>`;
       if(c.resolved === "miss"){
-        actionsLine = `<div class="capActions"><button class="capbtn" type="button" data-act="cert">Gerar certificado</button></div>`;
+        actionsLine = `<div class="capActions"><button class="capbtn" type="button" data-act="cert">Ver certificado</button></div>`;
       }
     } else if(isDue){
       metaLine = "Prazo chegou (" + fmtFullDate(due) + ") — aconteceu?";
