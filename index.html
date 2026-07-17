@@ -1014,8 +1014,8 @@ function runCalc(){
   const multiple = vNow / v0;
   const result = amount * multiple;
   const pct = (multiple - 1) * 100;
-  calcResult.innerHTML = `Se tivesses investido <b>${fmtEUR(amount)}</b> no dia de "<b>${esc(evTitle(idx))}</b>" (${t0|0}),
-    hoje valeria <b class="up">${fmtEUR(result)}</b> — uma subida de <b class="up">+${pct.toFixed(0)}%</b>.`;
+  calcResult.innerHTML = `Se tivesses investido <b>${fmtEUR(amount)}</b> no dia <b>${esc(evTitle(idx))}</b> (${t0|0}),
+    hoje valeria <b class="up">${fmtEUR(result)}</b> — Uma subida de <b class="up">+${pct.toFixed(0)}%</b>.`;
   calcResult.classList.add("show");
 }
 calcBtn.addEventListener("click", runCalc);
