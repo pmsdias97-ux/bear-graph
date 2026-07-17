@@ -285,7 +285,8 @@
   .capItem .meta{font-size:11.5px; color:var(--muted); margin-top:3px}
   .capItem .verdict{font-size:11.5px; font-weight:700; margin-top:4px}
   .capItem .verdict.hit{color:var(--line)} .capItem .verdict.miss{color:var(--danger-ink)}
-  .capActions{display:flex; gap:6px; margin-top:7px}
+  .capSide{display:flex; align-items:center; gap:6px; flex:none; flex-wrap:wrap; justify-content:flex-end}
+  .capActions{display:flex; gap:6px}
   .capbtn{
     font:inherit; font-size:11.5px; font-weight:600; cursor:pointer; border:1px solid var(--border);
     background:var(--chip); color:var(--chip-ink); border-radius:7px; padding:3px 10px;
@@ -293,6 +294,21 @@
   .capbtn.hit{color:var(--line)} .capbtn.miss{color:var(--danger-ink)}
   .capItem .capx{border:0; background:transparent; color:var(--muted); cursor:pointer; font-size:16px; line-height:1; padding:2px 4px}
   .capItem .capx:hover{color:var(--crisis)}
+
+  /* modal do certificado */
+  .certModal{
+    display:none; position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.55);
+    align-items:center; justify-content:center; padding:20px;
+  }
+  .certModal.show{display:flex}
+  .certModalInner{
+    background:var(--surface); border:1px solid var(--border); border-radius:16px;
+    box-shadow:var(--shadow); padding:16px; max-width:min(94vw,720px); max-height:90vh;
+    display:flex; flex-direction:column; gap:12px;
+  }
+  .certImgWrap{overflow:auto; border-radius:10px}
+  .certImgWrap img{display:block; width:100%; height:auto; border-radius:10px}
+  .certModalActions{display:flex; gap:8px; justify-content:flex-end}
 
   /* troça ao falhar uma previsão: confetti + toast */
   .confetti{
@@ -420,6 +436,16 @@
     'Bear' aware of this. Gráfico meramente ilustrativo. Os valores do S&amp;P 500 são aproximados.
     Rentabilidades passadas não garantem rentabilidades futuras. Isto não é aconselhamento financeiro.
   </footer>
+</div>
+
+<div class="certModal" id="certModal">
+  <div class="certModalInner">
+    <div class="certImgWrap" id="certImgWrap"></div>
+    <div class="certModalActions">
+      <button class="btn" id="certDownloadBtn" type="button">Descarregar</button>
+      <button class="btn" id="certCloseBtn" type="button">Fechar</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1292,13 +1318,33 @@ function generateCertificate(c){
 
   return canvas;
 }
-function downloadCertificate(c){
+const certModal = document.getElementById("certModal");
+const certImgWrap = document.getElementById("certImgWrap");
+const certDownloadBtn = document.getElementById("certDownloadBtn");
+const certCloseBtn = document.getElementById("certCloseBtn");
+let certCurrentDataURL = null;
+
+function showCertificate(c){
   const canvas = generateCertificate(c);
+  certCurrentDataURL = canvas.toDataURL("image/png");
+  certImgWrap.innerHTML = "";
+  const img = document.createElement("img");
+  img.src = certCurrentDataURL;
+  img.alt = "Certificado oficial de previsão falhada";
+  certImgWrap.appendChild(img);
+  certModal.classList.add("show");
+}
+function closeCertModal(){ certModal.classList.remove("show"); }
+certDownloadBtn.addEventListener("click", ()=>{
+  if(!certCurrentDataURL) return;
   const a = document.createElement("a");
   a.download = "certificado-bear-graph.png";
-  a.href = canvas.toDataURL("image/png");
+  a.href = certCurrentDataURL;
   a.click();
-}
+});
+certCloseBtn.addEventListener("click", closeCertModal);
+certModal.addEventListener("click", ev=>{ if(ev.target === certModal) closeCertModal(); });
+document.addEventListener("keydown", ev=>{ if(ev.key === "Escape") closeCertModal(); });
 
 function renderCapsules(){
   const now = new Date();
@@ -1347,9 +1393,11 @@ function renderCapsules(){
         <div class="qt">"${esc(c.text)}"${whoLine}</div>
         <div class="meta">${metaLine}</div>
         ${verdictLine}
-        ${actionsLine}
       </div>
-      <button class="capx" type="button" title="Apagar" aria-label="Apagar previsão">×</button>`;
+      <div class="capSide">
+        ${actionsLine}
+        <button class="capx" type="button" title="Apagar" aria-label="Apagar previsão">×</button>
+      </div>`;
 
     el.querySelector(".capx").addEventListener("click", ()=>{ if(confirm("Apagar esta previsão?")) deleteCapsule(c.id); });
     const hitBtn = el.querySelector('[data-act="hit"]');
@@ -1357,7 +1405,7 @@ function renderCapsules(){
     const missBtn = el.querySelector('[data-act="miss"]');
     if(missBtn) missBtn.addEventListener("click", ()=>{ mockCapsuleFail(el); resolveCapsule(c.id, "miss"); });
     const certBtn = el.querySelector('[data-act="cert"]');
-    if(certBtn) certBtn.addEventListener("click", ()=> downloadCertificate(c));
+    if(certBtn) certBtn.addEventListener("click", ()=> showCertificate(c));
 
     capList.appendChild(el);
   });
