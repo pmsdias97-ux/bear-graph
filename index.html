@@ -1027,11 +1027,14 @@ function fmtFullDate(date){ return date.getDate() + " de " + MESES[date.getMonth
 
 function addCapsule(){
   const text = capText.value.trim();
-  if(!text || !capDue.value) return;
+  if(!text){ showToast("Escreve a tua previsão primeiro."); capText.focus(); return; }
+  if(!capDue.value){ showToast("Escolhe uma data — não pode ser no passado."); capDue.focus(); return; }
   const who = capWho.value.trim();
   const where = capWhere.value;
   const now = new Date();
   const due = parseDateInputValue(capDue.value);
+  const todayMid = new Date(); todayMid.setHours(0,0,0,0);
+  if(due < todayMid){ showToast("Essa data já passou — escolhe hoje ou mais tarde."); capDue.focus(); return; }
   capsules.push({
     id: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
     text, who, where, createdISO: now.toISOString(), dueISO: due.toISOString(), resolved: null
