@@ -193,6 +193,26 @@
   .chip.gen{border-color:var(--user); color:var(--user); font-weight:700}
   .chip.gen:hover{background:color-mix(in srgb,var(--user) 12%, var(--chip))}
 
+  /* calculadora "e se tivesses comprado no pior momento" */
+  section.calc{margin-top:30px}
+  section.calc h2{font-size:15px; margin:0 0 4px; letter-spacing:-.01em}
+  section.calc p{margin:0 0 12px; color:var(--ink2); font-size:13px}
+  .calcForm{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .calcForm select, .calcForm input{
+    font:inherit; font-size:13.5px; padding:8px 11px; border-radius:10px;
+    border:1px solid var(--border); background:var(--surface); color:var(--ink); cursor:pointer;
+  }
+  .calcForm select{flex:1 1 260px; min-width:0; cursor:pointer}
+  .calcForm input{flex:0 1 140px; cursor:text}
+  .calcForm select:focus, .calcForm input:focus{outline:2px solid var(--user); outline-offset:1px; cursor:auto}
+  .calcResult{
+    display:none; padding:12px 15px; border-radius:12px; font-size:14px; color:var(--ink); line-height:1.5;
+    background:color-mix(in srgb,var(--line) 10%, var(--surface)); border:1px solid var(--border);
+  }
+  .calcResult.show{display:block}
+  .calcResult b{font-weight:700}
+  .calcResult .up{color:var(--line)}
+
   /* cápsula do tempo */
   section.capsule{margin-top:30px}
   section.capsule h2{font-size:15px; margin:0 0 4px; letter-spacing:-.01em}
@@ -238,6 +258,21 @@
   .capbtn.hit{color:var(--line)} .capbtn.miss{color:var(--danger-ink)}
   .capItem .capx{border:0; background:transparent; color:var(--muted); cursor:pointer; font-size:16px; line-height:1; padding:2px 4px}
   .capItem .capx:hover{color:var(--crisis)}
+
+  /* troça ao falhar uma previsão: confetti + toast */
+  .confetti{
+    position:fixed; top:0; left:0; width:6px; height:6px; border-radius:1px;
+    pointer-events:none; z-index:80; opacity:1;
+    animation:confettiFly .7s ease-out forwards;
+  }
+  @keyframes confettiFly{ to{ transform:translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity:0; } }
+  .toast{
+    position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(10px);
+    background:var(--surface); border:1px solid var(--border); color:var(--ink);
+    padding:10px 16px; border-radius:10px; box-shadow:var(--shadow); font-size:13.5px; font-weight:600;
+    opacity:0; transition:opacity .25s, transform .25s; z-index:90; pointer-events:none; white-space:nowrap;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
 
   footer{margin-top:34px; color:var(--muted); font-size:11.5px; line-height:1.6}
   a{color:inherit}
@@ -301,6 +336,17 @@
     <h2>Sugestões de crises</h2>
     <p>Doses de pânico. Clica numa e carimba-a no gráfico.</p>
     <div class="chips" id="chips"></div>
+  </section>
+
+  <section class="calc">
+    <h2>E se tivesses comprado no pior momento?</h2>
+    <p>Escolhe uma crise e um valor hipotético — vê quanto valeria hoje.</p>
+    <div class="calcForm">
+      <select id="calcCrisis" aria-label="Crise"></select>
+      <input type="number" id="calcAmount" min="1" step="1" value="1000" aria-label="Valor investido em euros">
+      <button class="btn" id="calcBtn" type="button">Calcular</button>
+    </div>
+    <div class="calcResult" id="calcResult"></div>
   </section>
 
   <section class="capsule">
@@ -866,6 +912,41 @@ function enterPlacement(txt){
 function exitPlacement(){ placementText = null; banner.classList.remove("show"); }
 document.getElementById("bannerCancel").addEventListener("click", exitPlacement);
 
+/* ---------- 8b. Calculadora "e se tivesses comprado no pior momento" ---------- */
+const calcCrisis = document.getElementById("calcCrisis");
+const calcAmount = document.getElementById("calcAmount");
+const calcBtn = document.getElementById("calcBtn");
+const calcResult = document.getElementById("calcResult");
+
+EVENTS.forEach((e, idx)=>{
+  const opt = document.createElement("option");
+  opt.value = idx;
+  opt.textContent = (e[0]|0) + " — " + e[1];
+  calcCrisis.appendChild(opt);
+});
+
+function fmtEUR(n){ return Math.round(n).toLocaleString("pt-PT") + " €"; }
+
+function runCalc(){
+  const idx = parseInt(calcCrisis.value, 10);
+  const amount = parseFloat(calcAmount.value);
+  if(isNaN(idx) || !isFinite(amount) || amount <= 0){ calcResult.classList.remove("show"); return; }
+  const t0 = evTime(idx);
+  const v0 = sampleV(t0);
+  const vNow = SPX[SPX.length-1].v;
+  const multiple = vNow / v0;
+  const result = amount * multiple;
+  const pct = (multiple - 1) * 100;
+  calcResult.innerHTML = `Se tivesses investido <b>${fmtEUR(amount)}</b> no dia de "<b>${esc(evTitle(idx))}</b>" (${t0|0}),
+    hoje valeria <b class="up">${fmtEUR(result)}</b> — uma subida de <b class="up">+${pct.toFixed(0)}%</b>.`;
+  calcResult.classList.add("show");
+}
+calcBtn.addEventListener("click", runCalc);
+calcCrisis.addEventListener("change", runCalc);
+calcAmount.addEventListener("input", runCalc);
+calcAmount.addEventListener("keydown", ev=>{ if(ev.key === "Enter"){ ev.preventDefault(); runCalc(); } });
+runCalc();
+
 /* ---------- 9. Controlos ---------- */
 const bLog = document.getElementById("scaleLog"), bLin = document.getElementById("scaleLin");
 function setScale(mode){
@@ -976,6 +1057,122 @@ function deleteCapsule(id){
   if(i >= 0){ capsules.splice(i, 1); saveCapsules(); renderCapsules(); }
 }
 
+/* ---------- 10b. Troça ao falhar uma previsão ---------- */
+const MOCK_LINES = [
+  "Mais uma para a conta.",
+  "Consistência, pelo menos.",
+  "O gráfico agradece.",
+  "Continua a tentar.",
+  "Isso também não aconteceu.",
+  "O urso volta a perder.",
+  "Zero por enquanto."
+];
+let toastEl = null, toastTimer = null;
+function showToast(msg){
+  if(!toastEl){ toastEl = document.createElement("div"); toastEl.className = "toast"; document.body.appendChild(toastEl); }
+  toastEl.textContent = msg;
+  requestAnimationFrame(()=> toastEl.classList.add("show"));
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> toastEl.classList.remove("show"), 2200);
+}
+function spawnConfetti(originEl){
+  const r = originEl.getBoundingClientRect();
+  const cx = r.left + r.width/2, cy = r.top + r.height/2;
+  const colors = ["var(--crisis)", "var(--user)", "var(--line)", "var(--muted)"];
+  for(let i=0;i<16;i++){
+    const p = document.createElement("div");
+    p.className = "confetti";
+    const angle = Math.random()*Math.PI*2, dist = 40 + Math.random()*70;
+    p.style.left = cx + "px"; p.style.top = cy + "px";
+    p.style.background = colors[i % colors.length];
+    p.style.setProperty("--dx", Math.cos(angle)*dist + "px");
+    p.style.setProperty("--dy", Math.sin(angle)*dist + "px");
+    p.style.setProperty("--rot", (Math.random()*360 - 180) + "deg");
+    document.body.appendChild(p);
+    setTimeout(()=> p.remove(), 750);
+  }
+}
+function mockCapsuleFail(el){
+  spawnConfetti(el);
+  showToast(MOCK_LINES[Math.floor(Math.random()*MOCK_LINES.length)]);
+}
+
+/* ---------- 10c. Certificado de previsão falhada ---------- */
+function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function wrapCanvasText(ctx, text, maxWidth){
+  const words = text.split(" ");
+  const lines = []; let line = "";
+  words.forEach(w=>{
+    const test = line ? line + " " + w : w;
+    if(ctx.measureText(test).width > maxWidth && line){ lines.push(line); line = w; }
+    else line = test;
+  });
+  if(line) lines.push(line);
+  return lines;
+}
+function generateCertificate(c){
+  const who = c.who || "Anónimo";
+  const dateStr = fmtFullDate(new Date(c.createdISO));
+  const sentence = `${who} previu que "${c.text}" em ${dateStr} e estava errado.`;
+
+  const W = 900, H = 560;
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  const surface = cssVar("--surface") || "#ffffff";
+  const ink = cssVar("--ink") || "#18181b";
+  const ink2 = cssVar("--ink2") || "#52525b";
+  const accent = cssVar("--user") || "#2563eb";
+  const crisisC = cssVar("--crisis") || "#dc2626";
+
+  ctx.fillStyle = surface;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.strokeStyle = accent; ctx.lineWidth = 4;
+  ctx.strokeRect(24, 24, W-48, H-48);
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(36, 36, W-72, H-72);
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = ink;
+  ctx.font = "700 20px -apple-system, Arial, sans-serif";
+  ctx.fillText("CERTIFICADO OFICIAL", W/2, 92);
+  ctx.fillStyle = ink2;
+  ctx.font = "400 13px -apple-system, Arial, sans-serif";
+  ctx.fillText("bear-graph — o gráfico que sobe apesar de tudo", W/2, 114);
+
+  ctx.fillStyle = ink;
+  ctx.font = "600 27px -apple-system, Arial, sans-serif";
+  const lines = wrapCanvasText(ctx, sentence, W - 160);
+  let y = H/2 - (lines.length-1)*19;
+  lines.forEach(line=>{ ctx.fillText(line, W/2, y); y += 40; });
+
+  ctx.save();
+  ctx.translate(W-150, H-120);
+  ctx.rotate(-0.25);
+  ctx.strokeStyle = crisisC; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(0, 0, 58, 0, Math.PI*2); ctx.stroke();
+  ctx.fillStyle = crisisC;
+  ctx.font = "700 14px -apple-system, Arial, sans-serif";
+  ctx.fillText("PREVISÃO", 0, -4);
+  ctx.fillText("FALHADA", 0, 14);
+  ctx.restore();
+
+  ctx.fillStyle = ink2;
+  ctx.font = "400 12px -apple-system, Arial, sans-serif";
+  ctx.fillText("Emitido em " + fmtFullDate(new Date()), W/2, H-50);
+
+  return canvas;
+}
+function downloadCertificate(c){
+  const canvas = generateCertificate(c);
+  const a = document.createElement("a");
+  a.download = "certificado-bear-graph.png";
+  a.href = canvas.toDataURL("image/png");
+  a.click();
+}
+
 function renderCapsules(){
   const now = new Date();
   capList.innerHTML = "";
@@ -1001,6 +1198,9 @@ function renderCapsules(){
     if(c.resolved){
       metaLine = "Previsto para " + fmtFullDate(due);
       verdictLine = `<div class="verdict ${c.resolved}">${c.resolved === "hit" ? "Aconteceu" : "Não aconteceu"}</div>`;
+      if(c.resolved === "miss"){
+        actionsLine = `<div class="capActions"><button class="capbtn" type="button" data-act="cert">Gerar certificado</button></div>`;
+      }
     } else if(isDue){
       metaLine = "Prazo chegou (" + fmtFullDate(due) + ") — aconteceu?";
       actionsLine = `<div class="capActions">
@@ -1028,7 +1228,9 @@ function renderCapsules(){
     const hitBtn = el.querySelector('[data-act="hit"]');
     if(hitBtn) hitBtn.addEventListener("click", ()=> resolveCapsule(c.id, "hit"));
     const missBtn = el.querySelector('[data-act="miss"]');
-    if(missBtn) missBtn.addEventListener("click", ()=> resolveCapsule(c.id, "miss"));
+    if(missBtn) missBtn.addEventListener("click", ()=>{ mockCapsuleFail(el); resolveCapsule(c.id, "miss"); });
+    const certBtn = el.querySelector('[data-act="cert"]');
+    if(certBtn) certBtn.addEventListener("click", ()=> downloadCertificate(c));
 
     capList.appendChild(el);
   });
