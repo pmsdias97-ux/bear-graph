@@ -1114,7 +1114,10 @@ function selectDateSilently(date){ capDueDate = date; dateBtnText.textContent = 
 function selectDate(date){ selectDateSilently(date); closeDatePicker(); }
 
 function openDatePicker(){
-  const ref = capDueDate || new Date();
+  // abre sempre no mês atual (não no mês da data pré-selecionada, que pode estar
+  // longe no futuro) — assim "hoje" fica sempre visível e não se seleciona sem querer
+  // um dia com o mesmo número mas num ano diferente
+  const ref = new Date();
   dpViewYear = ref.getFullYear(); dpViewMonth = ref.getMonth();
   renderDatePicker();
   datePopover.classList.add("show");
