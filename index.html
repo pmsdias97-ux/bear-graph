@@ -918,7 +918,7 @@ const calcAmount = document.getElementById("calcAmount");
 const calcBtn = document.getElementById("calcBtn");
 const calcResult = document.getElementById("calcResult");
 
-EVENTS.forEach((e, idx)=>{
+EVENTS.map((e, idx)=>({e, idx})).reverse().forEach(({e, idx})=>{
   const opt = document.createElement("option");
   opt.value = idx;
   opt.textContent = (e[0]|0) + " — " + e[1];
