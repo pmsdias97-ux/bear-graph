@@ -194,7 +194,7 @@
   .chip.gen:hover{background:color-mix(in srgb,var(--user) 12%, var(--chip))}
 
   /* calculadora "e se tivesses comprado no pior momento" */
-  section.calc{margin-top:30px}
+  section.calc{margin-top:30px; padding:18px 20px}
   section.calc h2{font-size:15px; margin:0 0 4px; letter-spacing:-.01em}
   section.calc p{margin:0 0 12px; color:var(--ink2); font-size:13px}
   .calcForm{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
@@ -214,7 +214,7 @@
   .calcResult .up{color:var(--line)}
 
   /* cápsula do tempo */
-  section.capsule{margin-top:30px}
+  section.capsule{margin-top:30px; padding:18px 20px}
   section.capsule h2{font-size:15px; margin:0 0 4px; letter-spacing:-.01em}
   section.capsule p{margin:0 0 12px; color:var(--ink2); font-size:13px}
   .capNotice{
@@ -406,7 +406,7 @@
     <div class="chips" id="chips"></div>
   </section>
 
-  <section class="calc">
+  <section class="calc card">
     <h2>E se tivesses comprado no pior momento?</h2>
     <p>Escolhe uma crise e um valor hipotético — vê quanto valeria hoje.</p>
     <div class="calcForm">
@@ -417,7 +417,7 @@
     <div class="calcResult" id="calcResult"></div>
   </section>
 
-  <section class="capsule">
+  <section class="capsule card">
     <h2>Cápsula do tempo</h2>
     <p>Faz uma previsão com prazo. O site guarda-a e, quando a data chegar, lembra-te de vir ver se acertaste.</p>
     <div class="capNotice" id="capNotice"></div>
