@@ -59,6 +59,18 @@
   .wrap.top{padding-top:28px}
   .wrap.bottom{padding-bottom:56px}
   .wrap-chart{max-width:1520px; margin:0 auto; padding:0 20px}
+  .priceToday{text-align:right; font-size:14px; color:var(--ink2); margin:0 2px 8px}
+  .liveDot{display:none; width:8px; height:8px; border-radius:50%; background:var(--line); margin-right:6px; vertical-align:middle}
+  body.live .liveDot{display:inline-block; animation:livepulse 1.6s ease-in-out infinite}
+  @keyframes livepulse{0%,100%{opacity:1; transform:scale(1)}50%{opacity:.35; transform:scale(.7)}}
+  .endPulseCore{display:none; fill:var(--line)}
+  .endPulseHalo{display:none; fill:none; stroke:var(--line); stroke-width:2; transform-box:fill-box; transform-origin:center}
+  body.live .endPulseCore{display:block}
+  body.live .endPulseHalo{display:block; animation:livehalo 1.6s ease-out infinite}
+  @keyframes livehalo{0%{transform:scale(.35); opacity:.9}100%{transform:scale(2.4); opacity:0}}
+  .layer > .chartReturn{position:absolute; top:10px; left:50%; transform:translateX(-50%);
+    font-size:14px; color:var(--ink2); white-space:nowrap; pointer-events:none;
+    background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:2px 10px}
 
   header{display:flex; flex-wrap:wrap; align-items:flex-end; gap:14px 20px; margin-bottom:18px}
   header .titles{flex:1 1 320px; min-width:0}
@@ -375,10 +387,12 @@
 </div>
 
 <div class="wrap-chart">
+  <div class="priceToday"><span class="liveDot"></span>Preço hoje: <b class="up" id="todayPrice"></b></div>
   <div class="card chartwrap">
     <div class="chart" id="chart">
       <svg id="svg" aria-label="Gráfico do S&P 500 ao longo do tempo com anotações de crises"></svg>
       <div class="layer" id="layer">
+        <div class="chartReturn" id="returns"></div>
         <div class="crosshair" id="crosshair"></div>
         <div class="curveDot" id="curveDot"></div>
         <div class="readout" id="readout"></div>
@@ -477,7 +491,7 @@ const ANCHORS = [
   [2011.30,1364],[2011.80,1099],[2013.00,1480],[2014.50,1960],[2015.40,2130],
   [2016.10,1829],[2018.70,2930],[2018.95,2351],[2020.15,3386],[2020.25,2237],
   [2021.00,3756],[2021.95,4766],[2022.80,3577],[2023.50,4589],[2024.00,4845],
-  [2024.95,5882],[2025.95,6202],[2026.30,6700],[2026.45,7621],[2026.52,7483]
+  [2024.95,5882],[2025.95,6202],[2026.30,6700],[2026.45,7621],[2026.52,7483],[2026.59,7714]
 ];
 
 // ruído determinístico (mesma forma em cada carregamento)
@@ -499,14 +513,58 @@ const SPX = (function(){
   return out;
 })();
 const T0 = SPX[0].t, T1 = SPX[SPX.length-1].t;
-const VMAX = Math.max(...SPX.map(p=>p.v));
-const VMIN = Math.min(...SPX.map(p=>p.v));
+let VMAX = Math.max(...SPX.map(p=>p.v));
+let VMIN = Math.min(...SPX.map(p=>p.v));
 
 function sampleV(t){
   if(t<=T0) return SPX[0].v;
   if(t>=T1) return SPX[SPX.length-1].v;
   const idx = Math.round((t - T0)*12);
   return (SPX[idx]||SPX[SPX.length-1]).v;
+}
+
+/* ---------- 1b. Cotação em tempo real (Yahoo Finance) ---------- */
+let liveV = null;                 // última cotação vinda da API (null = usa a âncora estática)
+function currentV(){ return liveV ?? ANCHORS[ANCHORS.length-1][1]; }
+
+function applyLivePrice(p){
+  liveV = p;
+  SPX[SPX.length-1].v = p;        // a ponta da linha acompanha a cotação
+  VMAX = Math.max(VMAX, p);
+  VMIN = Math.min(VMIN, p);
+  document.getElementById("todayPrice").textContent = Math.round(p).toLocaleString("pt-PT");
+  renderReturns();
+  render();
+}
+
+function marketOpenET(){          // NYSE: seg–sex, 9:30–16:00 ET (feriados devolvem o mesmo valor)
+  const now = new Date(new Date().toLocaleString("en-US",{timeZone:"America/New_York"}));
+  const d = now.getDay(), m = now.getHours()*60 + now.getMinutes();
+  return d >= 1 && d <= 5 && m >= 570 && m < 960;
+}
+
+function setLiveUI(){ document.body.classList.toggle("live", marketOpenET()); }  // bolinhas a pulsar
+
+async function fetchLivePrice(){
+  for(const host of ["query1.finance.yahoo.com","query2.finance.yahoo.com"]){
+    try{
+      const res = await fetch(`https://${host}/v8/finance/chart/%5EGSPC?interval=1m&range=1d`);
+      if(!res.ok) continue;                 // 429 etc. — tenta o host seguinte
+      const j = await res.json();
+      const p = j.chart.result[0].meta.regularMarketPrice;
+      if(p > 0){ applyLivePrice(p); return true; }
+    }catch(e){ /* sem rede — tenta o host seguinte */ }
+  }
+  return false;
+}
+
+let livePollMs = 60 * 1000;
+async function tickLivePrice(){
+  setLiveUI();
+  if(!marketOpenET()){ setTimeout(tickLivePrice, 60 * 1000); return; }  // fora de horas: só verifica o relógio
+  const ok = await fetchLivePrice();
+  livePollMs = ok ? 60 * 1000 : Math.min(livePollMs * 2, 15 * 60 * 1000);  // backoff até 15 min se a API limitar
+  setTimeout(tickLivePrice, livePollMs);
 }
 
 /* ---------- 2. Narrativas negativas históricas ---------- */
@@ -718,6 +776,11 @@ function render(){
   s += `<path d="${area}" fill="url(#ag)"/>`;
   s += `<path class="mainline" d="${d}" fill="none" stroke="var(--line)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
   s += `</g>`;
+
+  // bolinha "ao vivo" no fim da linha (visível só com o mercado aberto, via body.live)
+  const ex = xScale(T1), ey = yScale(SPX[SPX.length-1].v);
+  s += `<circle class="endPulseHalo" cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="7"/>`;
+  s += `<circle class="endPulseCore" cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="4"/>`;
 
   // marcadores de crise (só os que caem no período visível)
   EVENTS.forEach((e,idx)=>{
@@ -1052,9 +1115,18 @@ bLin.addEventListener("click", ()=>setScale("linear"));
 
 // período (Máx / 10A / 5A / 1A)
 const rangeBtns = document.querySelectorAll("[data-range]");
+const RANGE_START = { all:()=>T0, "10y":()=>T1-10, "5y":()=>T1-5, "1y":()=>T1-1 };
+const RANGE_LABEL = { all:"Máx", "10y":"10A", "5y":"5A", "1y":"1A" };
+function renderReturns(){
+  const pct = (currentV() / sampleV(RANGE_START[view]()) - 1) * 100;
+  const s = (pct>=0?"+":"") + Math.round(pct).toLocaleString("pt-PT") + "%";
+  document.getElementById("returns").innerHTML =
+    `<span>${RANGE_LABEL[view]} <b class="${pct>=0?"up":"down"}">${s}</b></span>`;
+}
 function setView(v){
   view = v;
   rangeBtns.forEach(b=> b.setAttribute("aria-pressed", b.dataset.range === v));
+  renderReturns();
   render();
 }
 rangeBtns.forEach(b=> b.addEventListener("click", ()=> setView(b.dataset.range)));
@@ -1451,7 +1523,12 @@ setInterval(checkForUpdate, 5 * 60 * 1000);
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) checkForUpdate(); });
 
 /* ---------- 11. Arranque + responsivo ---------- */
+document.getElementById("todayPrice").textContent = Math.round(currentV()).toLocaleString("pt-PT");
+renderReturns();
 render();
+setLiveUI();                                              // bolinhas ligadas se a bolsa estiver aberta
+fetchLivePrice();                                         // 1 chamada ao abrir a página
+setTimeout(tickLivePrice, 60 * 1000);                   // depois: 1/min em bolsa, com backoff
 if(window.ResizeObserver){
   new ResizeObserver(()=>{
     const r = chart.getBoundingClientRect();
