@@ -308,6 +308,25 @@
   .capbtn.hit{color:var(--line)} .capbtn.miss{color:var(--danger-ink)}
   .capItem .capx{border:0; background:transparent; color:var(--muted); cursor:pointer; font-size:16px; line-height:1; padding:2px 4px}
   .capItem .capx:hover{color:var(--crisis)}
+  .capItem .capEditBtn{border:0; background:transparent; color:var(--muted); cursor:pointer; font-size:14px; line-height:1; padding:4px}
+  .capItem .capEditBtn:hover{color:var(--user)}
+
+  .capItem.editing{align-items:stretch}
+  .capEditForm{display:flex; flex-direction:column; gap:8px; width:100%}
+  .capEditForm .capEditText{
+    font:inherit; font-size:13.5px; padding:8px 11px; border-radius:10px;
+    border:1px solid var(--border); background:var(--surface); color:var(--ink);
+  }
+  .capEditRow{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+  .capEditRow input, .capEditRow select{
+    font:inherit; font-size:13px; padding:8px 10px; border-radius:10px;
+    border:1px solid var(--border); background:var(--surface); color:var(--ink);
+  }
+  .capEditRow .capEditWho{flex:0 1 130px}
+  .capEditRow .capEditWhere{flex:0 1 110px; cursor:pointer}
+  .capEditRow .capEditWhere.placeholder{color:var(--muted)}
+  .capEditForm input:focus, .capEditForm select:focus{outline:2px solid var(--user); outline-offset:1px}
+  .capEditActions{display:flex; gap:8px}
 
   /* modal do certificado */
   .certModal{
@@ -1168,9 +1187,9 @@ const capList = document.getElementById("capList");
 const capText = document.getElementById("capText");
 const capWho = document.getElementById("capWho");
 const capWhere = document.getElementById("capWhere");
-function syncCapWherePlaceholder(){ capWhere.classList.toggle("placeholder", capWhere.value === ""); }
-capWhere.addEventListener("change", syncCapWherePlaceholder);
-syncCapWherePlaceholder();
+function syncWherePlaceholder(sel){ sel.classList.toggle("placeholder", sel.value === ""); }
+capWhere.addEventListener("change", ()=> syncWherePlaceholder(capWhere));
+syncWherePlaceholder(capWhere);
 const capAdd = document.getElementById("capAdd");
 
 function fmtFullDate(date){ return date.getDate() + " de " + MESES[date.getMonth()] + " de " + date.getFullYear(); }
@@ -1189,7 +1208,9 @@ const dpGrid = document.getElementById("dpGrid");
 const dpPrev = document.getElementById("dpPrev");
 const dpNext = document.getElementById("dpNext");
 
-let capDueDate = null;          // Date selecionada (meia-noite local)
+let capDueDate = null;          // Date selecionada (meia-noite local) — formulário "nova previsão"
+let editDueDate = null;         // Date selecionada — enquanto se edita uma previsão existente
+let editingCapsuleId = null;    // id da previsão a ser editada (null = nenhuma)
 let dpViewYear, dpViewMonth;    // mês/ano atualmente mostrado no calendário
 
 function sameDay(a, b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
@@ -1212,7 +1233,8 @@ function renderDatePicker(){
     const cellDate = new Date(dpViewYear, dpViewMonth, d);
     const isPast = cellDate < today;
     const isToday = sameDay(cellDate, today);
-    const isSelected = capDueDate && sameDay(cellDate, capDueDate);
+    const activeDate = editingCapsuleId ? editDueDate : capDueDate;
+    const isSelected = activeDate && sameDay(cellDate, activeDate);
     const cls = ["dpDay", isToday?"today":"", isSelected?"selected":""].filter(Boolean).join(" ");
     html += `<button type="button" class="${cls}" data-d="${d}"${isPast?" disabled":""}>${d}</button>`;
   }
@@ -1229,8 +1251,15 @@ function renderDatePicker(){
   });
 }
 
-function selectDateSilently(date){ capDueDate = date; dateBtnText.textContent = fmtDDMMYYYY(date); }
+function selectDateSilently(date){
+  if(editingCapsuleId){ editDueDate = date; } else { capDueDate = date; }
+  dateBtnText.textContent = fmtDDMMYYYY(date);
+}
 function selectDate(date){ selectDateSilently(date); closeDatePicker(); }
+// devolve o campo de data partilhado ao formulário principal (antes de qualquer wipe/re-render que o destruiria se ficasse "emprestado" a um item)
+function returnDateFieldHome(){
+  if(dateField.parentNode !== capAdd.parentNode) capAdd.parentNode.insertBefore(dateField, capAdd);
+}
 
 function openDatePicker(){
   // abre sempre no mês atual (não no mês da data pré-selecionada, que pode estar
@@ -1283,7 +1312,7 @@ function addCapsule(){
     text, who, where, createdISO: now.toISOString(), dueISO: capDueDate.toISOString(), resolved: null
   });
   saveCapsules();
-  capText.value = ""; capWho.value = ""; capWhere.value = ""; syncCapWherePlaceholder();
+  capText.value = ""; capWho.value = ""; capWhere.value = ""; syncWherePlaceholder(capWhere);
   selectDateSilently(now);
   renderCapsules();
 }
@@ -1430,6 +1459,7 @@ certModal.addEventListener("click", ev=>{ if(ev.target === certModal) closeCertM
 document.addEventListener("keydown", ev=>{ if(ev.key === "Escape") closeCertModal(); });
 
 function renderCapsules(){
+  returnDateFieldHome();
   const now = new Date();
   capList.innerHTML = "";
 
@@ -1449,6 +1479,60 @@ function renderCapsules(){
     const isDue = !c.resolved && due <= now;
     const el = document.createElement("div");
     el.className = "capItem" + (isDue ? " due" : "") + (c.resolved ? " resolved" : "");
+
+    if(c.id === editingCapsuleId){
+      el.classList.add("editing");
+      el.innerHTML = `<div class="capEditForm">
+          <input type="text" class="capEditText" maxlength="120" placeholder="A tua previsão de pânico…">
+          <div class="capEditRow">
+            <input type="text" class="capEditWho" maxlength="40" placeholder="Quem">
+            <select class="capEditWhere" aria-label="Onde">
+              <option value="">Onde</option>
+              <option value="TikTok">TikTok</option>
+              <option value="YouTube">YouTube</option>
+            </select>
+            <span class="capEditDateSlot"></span>
+          </div>
+          <div class="capEditActions">
+            <button class="btn" type="button" data-act="save-edit">Guardar</button>
+            <button class="capbtn" type="button" data-act="cancel-edit">Cancelar</button>
+          </div>
+        </div>`;
+      const editTextEl = el.querySelector(".capEditText");
+      const editWhoEl = el.querySelector(".capEditWho");
+      const editWhereEl = el.querySelector(".capEditWhere");
+      editTextEl.value = c.text;
+      editWhoEl.value = c.who || "";
+      editWhereEl.value = c.where || "";
+      syncWherePlaceholder(editWhereEl);
+      editWhereEl.addEventListener("change", ()=> syncWherePlaceholder(editWhereEl));
+
+      editDueDate = new Date(c.dueISO);
+      dateBtnText.textContent = fmtDDMMYYYY(editDueDate);
+      el.querySelector(".capEditDateSlot").appendChild(dateField);
+
+      el.querySelector('[data-act="save-edit"]').addEventListener("click", ()=>{
+        const newText = editTextEl.value.trim();
+        if(!newText){ showToast("A previsão não pode ficar vazia."); return; }
+        if(!editDueDate){ showToast("Escolhe uma data."); return; }
+        const todayMid = new Date(); todayMid.setHours(0,0,0,0);
+        if(editDueDate < todayMid){ showToast("Essa data já passou — escolhe hoje ou mais tarde."); return; }
+        c.text = newText;
+        c.who = editWhoEl.value.trim();
+        c.where = editWhereEl.value;
+        c.dueISO = editDueDate.toISOString();
+        saveCapsules();
+        editingCapsuleId = null;
+        renderCapsules();
+      });
+      el.querySelector('[data-act="cancel-edit"]').addEventListener("click", ()=>{
+        editingCapsuleId = null;
+        renderCapsules();
+      });
+
+      capList.appendChild(el);
+      return;
+    }
 
     let metaLine, verdictLine = "", actionsLine = "";
     if(c.resolved){
@@ -1479,10 +1563,12 @@ function renderCapsules(){
       </div>
       <div class="capSide">
         ${actionsLine}
+        <button class="capEditBtn" type="button" title="Editar" aria-label="Editar previsão">✎</button>
         <button class="capx" type="button" title="Apagar" aria-label="Apagar previsão">×</button>
       </div>`;
 
     el.querySelector(".capx").addEventListener("click", ()=>{ if(confirm("Apagar esta previsão?")) deleteCapsule(c.id); });
+    el.querySelector(".capEditBtn").addEventListener("click", ()=>{ editingCapsuleId = c.id; renderCapsules(); });
     const hitBtn = el.querySelector('[data-act="hit"]');
     if(hitBtn) hitBtn.addEventListener("click", ()=> resolveCapsule(c.id, "hit"));
     const missBtn = el.querySelector('[data-act="miss"]');
