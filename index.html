@@ -1223,7 +1223,10 @@ function renderDatePicker(){
   const daysInMonth = new Date(dpViewYear, dpViewMonth+1, 0).getDate();
   const daysInPrevMonth = new Date(dpViewYear, dpViewMonth, 0).getDate();
 
-  dpPrev.disabled = (dpViewYear === today.getFullYear() && dpViewMonth === today.getMonth());
+  // ao editar uma previsão existente permite-se corrigir para uma data já passada
+  // (ex.: selaram por engano 2027 em vez de 2026) — ao criar uma nova, o prazo tem de ser futuro
+  const allowPast = !!editingCapsuleId;
+  dpPrev.disabled = !allowPast && (dpViewYear === today.getFullYear() && dpViewMonth === today.getMonth());
 
   let html = "";
   for(let i=0;i<startOffset;i++){
@@ -1231,7 +1234,7 @@ function renderDatePicker(){
   }
   for(let d=1; d<=daysInMonth; d++){
     const cellDate = new Date(dpViewYear, dpViewMonth, d);
-    const isPast = cellDate < today;
+    const isPast = cellDate < today && !allowPast;
     const isToday = sameDay(cellDate, today);
     const activeDate = editingCapsuleId ? editDueDate : capDueDate;
     const isSelected = activeDate && sameDay(cellDate, activeDate);
@@ -1515,8 +1518,7 @@ function renderCapsules(){
         const newText = editTextEl.value.trim();
         if(!newText){ showToast("A previsão não pode ficar vazia."); return; }
         if(!editDueDate){ showToast("Escolhe uma data."); return; }
-        const todayMid = new Date(); todayMid.setHours(0,0,0,0);
-        if(editDueDate < todayMid){ showToast("Essa data já passou — escolhe hoje ou mais tarde."); return; }
+        // (permite datas passadas aqui — corrigir uma previsão para uma data já vencida é intencional)
         c.text = newText;
         c.who = editWhoEl.value.trim();
         c.where = editWhereEl.value;
