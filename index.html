@@ -328,9 +328,11 @@
   .capEditForm input:focus, .capEditForm select:focus{outline:2px solid var(--user); outline-offset:1px}
   .capEditActions{display:flex; gap:8px}
 
-  /* modal do certificado */
+  /* modal do certificado — z-index mais alto de todos: garante que fica sempre por
+     cima de qualquer outra sobreposição (nunca é um popup nativo do SO/browser,
+     por isso é sempre capturado em partilha de ecrã) */
   .certModal{
-    display:none; position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.55);
+    display:none; position:fixed; inset:0; z-index:300; background:rgba(0,0,0,.55);
     align-items:center; justify-content:center; padding:20px;
   }
   .certModal.show{display:flex}
