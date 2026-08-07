@@ -205,26 +205,6 @@
   .chip.gen{border-color:var(--user); color:var(--user); font-weight:700}
   .chip.gen:hover{background:color-mix(in srgb,var(--user) 12%, var(--chip))}
 
-  /* calculadora "e se tivesses comprado no pior momento" */
-  section.calc{margin-top:30px; padding:18px 20px}
-  section.calc h2{font-size:15px; margin:0 0 4px; letter-spacing:-.01em}
-  section.calc p{margin:0 0 12px; color:var(--ink2); font-size:13px}
-  .calcForm{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
-  .calcForm select, .calcForm input{
-    font:inherit; font-size:13.5px; padding:8px 11px; border-radius:10px;
-    border:1px solid var(--border); background:var(--surface); color:var(--ink); cursor:pointer;
-  }
-  .calcForm select{flex:1 1 260px; min-width:0; cursor:pointer}
-  .calcForm input{flex:0 1 140px; cursor:text}
-  .calcForm select:focus, .calcForm input:focus{outline:2px solid var(--user); outline-offset:1px; cursor:auto}
-  .calcResult{
-    display:none; padding:12px 15px; border-radius:12px; font-size:14px; color:var(--ink); line-height:1.5;
-    background:color-mix(in srgb,var(--line) 10%, var(--surface)); border:1px solid var(--border);
-  }
-  .calcResult.show{display:block}
-  .calcResult b{font-weight:700}
-  .calcResult .up{color:var(--line)}
-
   /* cápsula do tempo */
   section.capsule{margin-top:30px; padding:18px 20px}
   section.capsule h2{font-size:15px; margin:0 0 4px; letter-spacing:-.01em}
@@ -439,17 +419,6 @@
     <h2>Sugestões de crises</h2>
     <p>Doses de pânico. Clica numa e carimba-a no gráfico.</p>
     <div class="chips" id="chips"></div>
-  </section>
-
-  <section class="calc card">
-    <h2>E se tivesses comprado no pior momento?</h2>
-    <p>Escolhe uma crise e um valor hipotético — vê quanto valeria hoje.</p>
-    <div class="calcForm">
-      <select id="calcCrisis" aria-label="Crise"></select>
-      <input type="number" id="calcAmount" min="1" step="1" value="1000" aria-label="Valor investido em euros">
-      <button class="btn" id="calcBtn" type="button">Calcular</button>
-    </div>
-    <div class="calcResult" id="calcResult"></div>
   </section>
 
   <section class="capsule card">
@@ -1087,41 +1056,6 @@ function enterPlacement(txt){
 }
 function exitPlacement(){ placementText = null; banner.classList.remove("show"); }
 document.getElementById("bannerCancel").addEventListener("click", exitPlacement);
-
-/* ---------- 8b. Calculadora "e se tivesses comprado no pior momento" ---------- */
-const calcCrisis = document.getElementById("calcCrisis");
-const calcAmount = document.getElementById("calcAmount");
-const calcBtn = document.getElementById("calcBtn");
-const calcResult = document.getElementById("calcResult");
-
-EVENTS.map((e, idx)=>({e, idx})).reverse().forEach(({e, idx})=>{
-  const opt = document.createElement("option");
-  opt.value = idx;
-  opt.textContent = (e[0]|0) + " — " + e[1];
-  calcCrisis.appendChild(opt);
-});
-
-function fmtEUR(n){ return Math.round(n).toLocaleString("pt-PT") + " €"; }
-
-function runCalc(){
-  const idx = parseInt(calcCrisis.value, 10);
-  const amount = parseFloat(calcAmount.value);
-  if(isNaN(idx) || !isFinite(amount) || amount <= 0){ calcResult.classList.remove("show"); return; }
-  const t0 = evTime(idx);
-  const v0 = sampleV(t0);
-  const vNow = SPX[SPX.length-1].v;
-  const multiple = vNow / v0;
-  const result = amount * multiple;
-  const pct = (multiple - 1) * 100;
-  calcResult.innerHTML = `Se tivesses investido <b>${fmtEUR(amount)}</b> no dia <b>${esc(evTitle(idx))}</b> (${t0|0}),
-    hoje valeria <b class="up">${fmtEUR(result)}</b> — Uma subida de <b class="up">+${pct.toFixed(0)}%</b>.`;
-  calcResult.classList.add("show");
-}
-calcBtn.addEventListener("click", runCalc);
-calcCrisis.addEventListener("change", runCalc);
-calcAmount.addEventListener("input", runCalc);
-calcAmount.addEventListener("keydown", ev=>{ if(ev.key === "Enter"){ ev.preventDefault(); runCalc(); } });
-runCalc();
 
 /* ---------- 9. Controlos ---------- */
 const bLog = document.getElementById("scaleLog"), bLin = document.getElementById("scaleLin");
