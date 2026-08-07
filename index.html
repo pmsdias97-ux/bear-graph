@@ -266,47 +266,97 @@
   .dpDay.today{box-shadow:inset 0 0 0 1px var(--user)}
   .dpDay.selected{background:var(--user); color:var(--save-ink); font-weight:700}
   .dpDay:disabled{color:var(--muted); opacity:.3; cursor:default}
-  .capList{display:flex; flex-direction:column; gap:8px}
+  /* [TESTE] quadro de giz com notas arrastáveis — ver secção capsule.card */
+  .boardFrame{
+    width:100%; max-width:900px; margin:16px auto 0; padding:16px 16px 12px;
+    border-radius:8px; background:linear-gradient(155deg, #9a6a3f, #6b4226 55%, #55341c);
+    box-shadow:0 16px 30px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.1), inset 0 -2px 4px rgba(0,0,0,.3);
+  }
+  .boardFrame::after{
+    content:""; display:block; height:14px; width:94%; margin:10px auto 0;
+    background:linear-gradient(#4a2c15, #2a1709); border-radius:3px;
+    box-shadow:inset 0 2px 3px rgba(0,0,0,.55), 0 1px 0 rgba(255,255,255,.06);
+  }
+  .capList{
+    position:relative; width:100%; aspect-ratio:3/2; overflow:hidden;
+    border-radius:3px;
+    background:
+      radial-gradient(ellipse at 22% 18%, rgba(255,255,255,.05), transparent 55%),
+      radial-gradient(ellipse at 78% 75%, rgba(255,255,255,.04), transparent 50%),
+      #1e3d2c;
+    box-shadow:inset 0 0 50px rgba(0,0,0,.55), inset 0 0 3px rgba(0,0,0,.85);
+  }
   .capItem{
-    display:flex; align-items:flex-start; gap:10px; padding:10px 12px;
-    border:1px solid var(--border); border-radius:12px; background:var(--surface);
+    --tilt: -2deg; --note-bg: #fef6b8;
+    display:flex; flex-direction:column; gap:6px;
+    width:190px; min-height:132px; padding:16px 12px 12px;
+    border:none; border-radius:3px; background:var(--note-bg); color:#3a3423;
+    box-shadow:0 10px 16px -4px rgba(0,0,0,.4), 0 3px 6px rgba(0,0,0,.22);
+    position:absolute; touch-action:none; cursor:grab;
+    transition:box-shadow .15s ease, transform .1s ease;
   }
-  .capItem.due{border-color:var(--user); box-shadow:0 0 0 2px color-mix(in srgb,var(--user) 22%, transparent)}
-  .capItem.resolved{opacity:.6}
+  .capItem:not(.dragging){ transform:rotate(var(--tilt)) }
+  .capItem::before{
+    content:""; position:absolute; top:-8px; left:50%; margin-left:-7px;
+    width:14px; height:14px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #ff9a8b, #c0392b);
+    box-shadow:0 3px 4px rgba(0,0,0,.45); pointer-events:none;
+  }
+  .capItem:nth-child(3n+2){ --note-bg: #ffd3e0; }
+  .capItem:nth-child(3n){ --note-bg: #bfe3fb; }
+  .capItem:nth-child(4n+1){ --tilt: -2.5deg; }
+  .capItem:nth-child(4n+2){ --tilt: 1.5deg; }
+  .capItem:nth-child(4n+3){ --tilt: -1deg; }
+  .capItem:nth-child(4n){ --tilt: 2.2deg; }
+  .capItem:hover{ box-shadow:0 16px 22px -6px rgba(0,0,0,.45), 0 4px 8px rgba(0,0,0,.25); z-index:5 }
+  .capItem.dragging{ cursor:grabbing; z-index:10; transform:rotate(0deg) scale(1.06); box-shadow:0 22px 30px -6px rgba(0,0,0,.5), 0 6px 10px rgba(0,0,0,.3); transition:none }
+  .capItem.due{ box-shadow:0 0 0 3px rgba(37,99,235,.55), 0 10px 16px -4px rgba(0,0,0,.4) }
+  .capItem.resolved{ opacity:.75 }
   .capItem .body{flex:1 1 auto; min-width:0}
-  .capItem .qt{font-size:13.5px; color:var(--ink); line-height:1.35}
-  .capItem .qt .capwho{color:var(--muted); font-weight:600}
-  .capItem .meta{font-size:11.5px; color:var(--muted); margin-top:3px}
-  .capItem .verdict{font-size:11.5px; font-weight:700; margin-top:4px}
-  .capItem .verdict.hit{color:var(--line)} .capItem .verdict.miss{color:var(--danger-ink)}
-  .capSide{display:flex; align-items:center; gap:6px; flex:none; flex-wrap:wrap; justify-content:flex-end}
-  .capActions{display:flex; gap:6px}
+  .capItem .qt{font-size:12.5px; color:#3a3423; line-height:1.35; font-weight:600}
+  .capItem .qt .capwho{color:#6b6047; font-weight:600}
+  .capItem .meta{font-size:10.5px; color:#6b6047; margin-top:5px}
+  .capItem .verdict{font-size:11px; font-weight:700; margin-top:4px}
+  .capItem .verdict.hit{color:#1b7a3d} .capItem .verdict.miss{color:#a4293d}
+  .capSide{display:flex; align-items:center; gap:5px; flex:none; flex-wrap:wrap; justify-content:flex-start; margin-top:8px; order:2}
+  .capActions{display:flex; gap:6px; flex-wrap:wrap}
   .capbtn{
-    font:inherit; font-size:11.5px; font-weight:600; cursor:pointer; border:1px solid var(--border);
-    background:var(--chip); color:var(--chip-ink); border-radius:7px; padding:3px 10px;
+    font:inherit; font-size:10.5px; font-weight:700; cursor:pointer; border:1px solid rgba(58,52,35,.25);
+    background:rgba(255,255,255,.55); color:#3a3423; border-radius:6px; padding:3px 7px;
   }
-  .capbtn.hit{color:var(--line)} .capbtn.miss{color:var(--danger-ink)}
-  .capItem .capx{border:0; background:transparent; color:var(--muted); cursor:pointer; font-size:16px; line-height:1; padding:2px 4px}
-  .capItem .capx:hover{color:var(--crisis)}
-  .capItem .capEditBtn{border:0; background:transparent; color:var(--muted); cursor:pointer; font-size:14px; line-height:1; padding:4px}
-  .capItem .capEditBtn:hover{color:var(--user)}
+  .capbtn.hit{color:#1b7a3d} .capbtn.miss{color:#a4293d}
+  .capItem .capx{
+    position:absolute; top:4px; right:6px; border:0; background:transparent; color:rgba(58,52,35,.55);
+    cursor:pointer; font-size:15px; line-height:1; padding:2px 4px;
+  }
+  .capItem .capx:hover{color:#a4293d}
+  .capItem .capEditBtn{
+    position:absolute; top:4px; right:24px; border:0; background:transparent; color:rgba(58,52,35,.55);
+    cursor:pointer; font-size:13px; line-height:1; padding:4px;
+  }
+  .capItem .capEditBtn:hover{color:#1b4d8f}
 
-  .capItem.editing{align-items:stretch}
-  .capEditForm{display:flex; flex-direction:column; gap:8px; width:100%}
-  .capEditForm .capEditText{
-    font:inherit; font-size:13.5px; padding:8px 11px; border-radius:10px;
+  /* modal de edição da previsão (fora do quadro — evita ficar cortado pelo tamanho fixo) */
+  .capEditModalInner{width:min(94vw,420px)}
+  .capEditText{
+    width:100%; font:inherit; font-size:13.5px; padding:8px 11px; border-radius:10px;
     border:1px solid var(--border); background:var(--surface); color:var(--ink);
   }
-  .capEditRow{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+  .capEditRow{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px}
   .capEditRow input, .capEditRow select{
     font:inherit; font-size:13px; padding:8px 10px; border-radius:10px;
     border:1px solid var(--border); background:var(--surface); color:var(--ink);
   }
-  .capEditRow .capEditWho{flex:0 1 130px}
+  .capEditRow .capEditWho{flex:1 1 100px; min-width:0}
   .capEditRow .capEditWhere{flex:0 1 110px; cursor:pointer}
   .capEditRow .capEditWhere.placeholder{color:var(--muted)}
-  .capEditForm input:focus, .capEditForm select:focus{outline:2px solid var(--user); outline-offset:1px}
-  .capEditActions{display:flex; gap:8px}
+  .capEditText:focus, .capEditRow input:focus, .capEditRow select:focus{outline:2px solid var(--user); outline-offset:1px}
+  .capEditActions{display:flex; gap:8px; margin-top:12px}
+
+  /* modal de confirmação próprio — substitui o confirm() nativo do browser,
+     que pode ficar bloqueado em contextos sandboxed (ex.: preview em iframe) */
+  .confirmModalInner{width:min(94vw,340px)}
+  .confirmMsg{font-size:14px; color:var(--ink); margin:0; line-height:1.4}
 
   /* modal do certificado — z-index mais alto de todos: garante que fica sempre por
      cima de qualquer outra sobreposição (nunca é um popup nativo do SO/browser,
@@ -450,7 +500,9 @@
       </div>
       <button class="btn" id="capAdd" type="button">Selar previsão</button>
     </div>
-    <div class="capList" id="capList"></div>
+    <div class="boardFrame">
+      <div class="capList" id="capList"></div>
+    </div>
   </section>
 
   <footer>
@@ -465,6 +517,35 @@
     <div class="certModalActions">
       <button class="btn" id="certDownloadBtn" type="button">Descarregar</button>
       <button class="btn" id="certCloseBtn" type="button">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="certModal" id="capEditModal">
+  <div class="certModalInner capEditModalInner">
+    <input type="text" class="capEditText" id="capEditText" maxlength="120" placeholder="A tua previsão de pânico…">
+    <div class="capEditRow">
+      <input type="text" class="capEditWho" id="capEditWho" maxlength="40" placeholder="Quem">
+      <select class="capEditWhere" id="capEditWhere" aria-label="Onde">
+        <option value="">Onde</option>
+        <option value="TikTok">TikTok</option>
+        <option value="YouTube">YouTube</option>
+      </select>
+      <span class="capEditDateSlot" id="capEditDateSlot"></span>
+    </div>
+    <div class="capEditActions">
+      <button class="btn" type="button" id="capEditSave">Guardar</button>
+      <button class="capbtn" type="button" id="capEditCancel">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="certModal" id="confirmModal">
+  <div class="certModalInner confirmModalInner">
+    <p class="confirmMsg" id="confirmMsg"></p>
+    <div class="certModalActions">
+      <button class="capbtn" type="button" id="confirmCancelBtn">Cancelar</button>
+      <button class="btn" type="button" id="confirmOkBtn">Apagar</button>
     </div>
   </div>
 </div>
@@ -886,9 +967,9 @@ function showTip(i, sticky){
     const rb = tip.querySelector(".reset");
     if(rb) rb.addEventListener("click", ev=>{ ev.stopPropagation(); delete eventOverrides[i]; saveOverrides(); hideTip(); render(); });
     const db = tip.querySelector(".del");
-    if(db) db.addEventListener("click", ev=>{
+    if(db) db.addEventListener("click", async ev=>{
       ev.stopPropagation();
-      if(confirm("Apagar esta crise do gráfico?")){
+      if(await askConfirm("Apagar esta crise do gráfico?")){
         deletedEvents.add(i); saveDeleted();
         delete eventOverrides[i]; saveOverrides();
         hideTip(); render();
@@ -1086,10 +1167,10 @@ function setView(v){
 }
 rangeBtns.forEach(b=> b.addEventListener("click", ()=> setView(b.dataset.range)));
 
-document.getElementById("clearBtn").addEventListener("click", ()=>{
+document.getElementById("clearBtn").addEventListener("click", async ()=>{
   closeEditor();
   if(!annotations.length) return;
-  if(confirm("Apagar todas as tuas notas?")){ annotations = []; saveNotes(); render(); }
+  if(await askConfirm("Apagar todas as tuas notas?")){ annotations = []; saveNotes(); render(); }
 });
 
 // esconder/mostrar o texto das notas (os pontos azuis mantêm-se sempre visíveis)
@@ -1271,6 +1352,26 @@ function deleteCapsule(id){
   if(i >= 0){ capsules.splice(i, 1); saveCapsules(); renderCapsules(); }
 }
 
+/* ---------- 10a2. Confirmação própria (evita depender do confirm() nativo,
+   que pode ficar bloqueado em contextos sandboxed como o preview em iframe) ---------- */
+const confirmModal = document.getElementById("confirmModal");
+const confirmMsg = document.getElementById("confirmMsg");
+const confirmOkBtn = document.getElementById("confirmOkBtn");
+const confirmCancelBtn = document.getElementById("confirmCancelBtn");
+let confirmResolve = null;
+function askConfirm(msg){
+  confirmMsg.textContent = msg;
+  confirmModal.classList.add("show");
+  return new Promise(resolve=>{ confirmResolve = resolve; });
+}
+function closeConfirmModal(result){
+  confirmModal.classList.remove("show");
+  if(confirmResolve){ confirmResolve(result); confirmResolve = null; }
+}
+confirmOkBtn.addEventListener("click", ()=> closeConfirmModal(true));
+confirmCancelBtn.addEventListener("click", ()=> closeConfirmModal(false));
+confirmModal.addEventListener("click", ev=>{ if(ev.target === confirmModal) closeConfirmModal(false); });
+
 /* ---------- 10b. Troça ao falhar uma previsão ---------- */
 let toastEl = null, toastTimer = null;
 function showToast(msg){
@@ -1397,8 +1498,51 @@ certCloseBtn.addEventListener("click", closeCertModal);
 certModal.addEventListener("click", ev=>{ if(ev.target === certModal) closeCertModal(); });
 document.addEventListener("keydown", ev=>{ if(ev.key === "Escape") closeCertModal(); });
 
+// atribui (e persiste) uma posição inicial dispersa a uma previsão que ainda não tem uma
+function getOrAssignPos(c){
+  if(!c.pos){
+    c.pos = { x: 6 + Math.random()*66, y: 8 + Math.random()*58 };
+    saveCapsules();
+  }
+  return c.pos;
+}
+
+// deixa arrastar a nota dentro do quadro; a posição final fica guardada em percentagem
+function makeDraggable(el, c){
+  el.addEventListener("pointerdown", ev=>{
+    if(ev.target.closest("button")) return;   // não arrasta a partir de um botão da nota
+    ev.preventDefault();
+    const noteRect = el.getBoundingClientRect();
+    const offX = ev.clientX - noteRect.left, offY = ev.clientY - noteRect.top;
+    el.classList.add("dragging");
+    try{ el.setPointerCapture(ev.pointerId); }catch(e){}
+
+    function onMove(mv){
+      const bx = capList.getBoundingClientRect();
+      let left = mv.clientX - bx.left - offX;
+      let top = mv.clientY - bx.top - offY;
+      left = Math.max(0, Math.min(bx.width - noteRect.width, left));
+      top = Math.max(0, Math.min(bx.height - noteRect.height, top));
+      el.style.left = left + "px";
+      el.style.top = top + "px";
+    }
+    function onUp(){
+      el.classList.remove("dragging");
+      try{ el.releasePointerCapture(ev.pointerId); }catch(e){}
+      const bx = capList.getBoundingClientRect();
+      c.pos = {
+        x: ((parseFloat(el.style.left) || 0) / bx.width) * 100,
+        y: ((parseFloat(el.style.top) || 0) / bx.height) * 100
+      };
+      saveCapsules();
+      el.removeEventListener("pointermove", onMove);
+    }
+    el.addEventListener("pointermove", onMove);
+    el.addEventListener("pointerup", onUp, { once:true });
+  });
+}
+
 function renderCapsules(){
-  returnDateFieldHome();
   const now = new Date();
   capList.innerHTML = "";
 
@@ -1418,59 +1562,9 @@ function renderCapsules(){
     const isDue = !c.resolved && due <= now;
     const el = document.createElement("div");
     el.className = "capItem" + (isDue ? " due" : "") + (c.resolved ? " resolved" : "");
-
-    if(c.id === editingCapsuleId){
-      el.classList.add("editing");
-      el.innerHTML = `<div class="capEditForm">
-          <input type="text" class="capEditText" maxlength="120" placeholder="A tua previsão de pânico…">
-          <div class="capEditRow">
-            <input type="text" class="capEditWho" maxlength="40" placeholder="Quem">
-            <select class="capEditWhere" aria-label="Onde">
-              <option value="">Onde</option>
-              <option value="TikTok">TikTok</option>
-              <option value="YouTube">YouTube</option>
-            </select>
-            <span class="capEditDateSlot"></span>
-          </div>
-          <div class="capEditActions">
-            <button class="btn" type="button" data-act="save-edit">Guardar</button>
-            <button class="capbtn" type="button" data-act="cancel-edit">Cancelar</button>
-          </div>
-        </div>`;
-      const editTextEl = el.querySelector(".capEditText");
-      const editWhoEl = el.querySelector(".capEditWho");
-      const editWhereEl = el.querySelector(".capEditWhere");
-      editTextEl.value = c.text;
-      editWhoEl.value = c.who || "";
-      editWhereEl.value = c.where || "";
-      syncWherePlaceholder(editWhereEl);
-      editWhereEl.addEventListener("change", ()=> syncWherePlaceholder(editWhereEl));
-
-      editDueDate = new Date(c.dueISO);
-      dateBtnText.textContent = fmtDDMMYYYY(editDueDate);
-      el.querySelector(".capEditDateSlot").appendChild(dateField);
-
-      el.querySelector('[data-act="save-edit"]').addEventListener("click", ()=>{
-        const newText = editTextEl.value.trim();
-        if(!newText){ showToast("A previsão não pode ficar vazia."); return; }
-        if(!editDueDate){ showToast("Escolhe uma data."); return; }
-        // (permite datas passadas aqui — corrigir uma previsão para uma data já vencida é intencional)
-        c.text = newText;
-        c.who = editWhoEl.value.trim();
-        c.where = editWhereEl.value;
-        c.dueISO = editDueDate.toISOString();
-        saveCapsules();
-        editingCapsuleId = null;
-        renderCapsules();
-      });
-      el.querySelector('[data-act="cancel-edit"]').addEventListener("click", ()=>{
-        editingCapsuleId = null;
-        renderCapsules();
-      });
-
-      capList.appendChild(el);
-      return;
-    }
+    const pos = getOrAssignPos(c);
+    el.style.left = pos.x + "%";
+    el.style.top = pos.y + "%";
 
     let metaLine, verdictLine = "", actionsLine = "";
     if(c.resolved){
@@ -1505,8 +1599,14 @@ function renderCapsules(){
         <button class="capx" type="button" title="Apagar" aria-label="Apagar previsão">×</button>
       </div>`;
 
-    el.querySelector(".capx").addEventListener("click", ()=>{ if(confirm("Apagar esta previsão?")) deleteCapsule(c.id); });
-    el.querySelector(".capEditBtn").addEventListener("click", ()=>{ editingCapsuleId = c.id; renderCapsules(); });
+    // impede que um clique nos botões da nota seja interpretado como início de arrasto
+    el.querySelector(".capSide").addEventListener("pointerdown", ev=> ev.stopPropagation());
+    el.querySelector(".capx").addEventListener("click", async ev=>{
+      ev.stopPropagation();
+      if(await askConfirm("Apagar esta previsão?")) deleteCapsule(c.id);
+    });
+    el.querySelector(".capEditBtn").addEventListener("click", ev=>{ ev.stopPropagation(); openEditModal(c); });
+    makeDraggable(el, c);
     const hitBtn = el.querySelector('[data-act="hit"]');
     if(hitBtn) hitBtn.addEventListener("click", ()=> resolveCapsule(c.id, "hit"));
     const missBtn = el.querySelector('[data-act="miss"]');
@@ -1521,6 +1621,49 @@ function renderCapsules(){
     capList.appendChild(el);
   });
 }
+
+/* ---------- 10c2. Modal de edição da previsão (fora do quadro, tamanho fixo) ---------- */
+const capEditModal = document.getElementById("capEditModal");
+const capEditText = document.getElementById("capEditText");
+const capEditWho = document.getElementById("capEditWho");
+const capEditWhere = document.getElementById("capEditWhere");
+const capEditDateSlot = document.getElementById("capEditDateSlot");
+capEditWhere.addEventListener("change", ()=> syncWherePlaceholder(capEditWhere));
+
+function openEditModal(c){
+  editingCapsuleId = c.id;
+  capEditText.value = c.text;
+  capEditWho.value = c.who || "";
+  capEditWhere.value = c.where || "";
+  syncWherePlaceholder(capEditWhere);
+  editDueDate = new Date(c.dueISO);
+  dateBtnText.textContent = fmtDDMMYYYY(editDueDate);
+  capEditDateSlot.appendChild(dateField);
+  capEditModal.classList.add("show");
+}
+function closeEditModal(){
+  editingCapsuleId = null;
+  returnDateFieldHome();
+  capEditModal.classList.remove("show");
+}
+document.getElementById("capEditSave").addEventListener("click", ()=>{
+  const c = capsules.find(cc=> cc.id === editingCapsuleId);
+  if(!c) return closeEditModal();
+  const newText = capEditText.value.trim();
+  if(!newText){ showToast("A previsão não pode ficar vazia."); return; }
+  if(!editDueDate){ showToast("Escolhe uma data."); return; }
+  // (permite datas passadas — corrigir uma previsão para uma data já vencida é intencional)
+  c.text = newText;
+  c.who = capEditWho.value.trim();
+  c.where = capEditWhere.value;
+  c.dueISO = editDueDate.toISOString();
+  saveCapsules();
+  closeEditModal();
+  renderCapsules();
+});
+document.getElementById("capEditCancel").addEventListener("click", closeEditModal);
+capEditModal.addEventListener("click", ev=>{ if(ev.target === capEditModal) closeEditModal(); });
+
 renderCapsules();
 
 /* ---------- 10d. Deteção de nova versão publicada ---------- */
