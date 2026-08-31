@@ -220,6 +220,7 @@
     border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--ink);
   }
   .capForm input#capWho{flex:0 1 130px}
+  .capForm input.capLiveInput{flex:0 0 68px; text-align:center}
   .capForm input::placeholder{color:var(--muted); opacity:1}
   .capForm select{
     font:inherit; font-size:13px; padding:8px 10px; border-radius:10px;
@@ -280,10 +281,7 @@
   .capList{
     position:relative; width:100%; aspect-ratio:3/2; overflow:hidden;
     border-radius:3px;
-    background:
-      radial-gradient(ellipse at 22% 18%, rgba(255,255,255,.05), transparent 55%),
-      radial-gradient(ellipse at 78% 75%, rgba(255,255,255,.04), transparent 50%),
-      #1e3d2c;
+    background:url(quadro-giz-bear-graph-cemiterio.jpg) center/cover no-repeat, #1e3d2c;
     box-shadow:inset 0 0 50px rgba(0,0,0,.55), inset 0 0 3px rgba(0,0,0,.85);
   }
   .capItem{
@@ -349,6 +347,7 @@
   }
   .capEditRow .capEditWho{flex:1 1 100px; min-width:0}
   .capEditRow .capEditWhere{flex:0 1 110px; cursor:pointer}
+  .capEditRow .capEditLive{flex:0 0 68px; text-align:center}
   .capEditRow .capEditWhere.placeholder{color:var(--muted)}
   .capEditText:focus, .capEditRow input:focus, .capEditRow select:focus{outline:2px solid var(--user); outline-offset:1px}
   .capEditActions{display:flex; gap:8px; margin-top:12px}
@@ -483,6 +482,7 @@
         <option value="TikTok">TikTok</option>
         <option value="YouTube">YouTube</option>
       </select>
+      <input type="text" id="capLive" class="capLiveInput" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="Live nº" aria-label="Número da live">
       <div class="dateField" id="dateField">
         <button type="button" class="dateBtn" id="dateBtn" aria-haspopup="dialog" aria-expanded="false">
           <span id="dateBtnText"></span>
@@ -531,6 +531,7 @@
         <option value="TikTok">TikTok</option>
         <option value="YouTube">YouTube</option>
       </select>
+      <input type="text" class="capEditLive" id="capEditLive" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="Live nº" aria-label="Número da live">
       <span class="capEditDateSlot" id="capEditDateSlot"></span>
     </div>
     <div class="capEditActions">
@@ -1204,6 +1205,8 @@ const capList = document.getElementById("capList");
 const capText = document.getElementById("capText");
 const capWho = document.getElementById("capWho");
 const capWhere = document.getElementById("capWhere");
+const capLive = document.getElementById("capLive");
+capLive.addEventListener("input", ()=>{ capLive.value = capLive.value.replace(/\D/g, "").slice(0, 4); });
 function syncWherePlaceholder(sel){ sel.classList.toggle("placeholder", sel.value === ""); }
 capWhere.addEventListener("change", ()=> syncWherePlaceholder(capWhere));
 syncWherePlaceholder(capWhere);
@@ -1324,26 +1327,29 @@ function addCapsule(){
   if(!capDueDate){ showToast("Escolhe uma data — não pode ser no passado."); return; }
   const who = capWho.value.trim();
   const where = capWhere.value;
+  const live = capLive.value.trim();
   const now = new Date();
   const todayMid = new Date(); todayMid.setHours(0,0,0,0);
   if(capDueDate < todayMid){ showToast("Essa data já passou — escolhe hoje ou mais tarde."); return; }
   capsules.push({
     id: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
-    text, who, where, createdISO: now.toISOString(), dueISO: capDueDate.toISOString(), resolved: null
+    text, who, where, live, createdISO: now.toISOString(), dueISO: capDueDate.toISOString(), resolved: null
   });
   saveCapsules();
-  capText.value = ""; capWho.value = ""; capWhere.value = ""; syncWherePlaceholder(capWhere);
+  capText.value = ""; capWho.value = ""; capWhere.value = ""; syncWherePlaceholder(capWhere); capLive.value = "";
   selectDateSilently(now);
   renderCapsules();
 }
 capAdd.addEventListener("click", addCapsule);
 capText.addEventListener("keydown", ev=>{ if(ev.key === "Enter"){ ev.preventDefault(); addCapsule(); } });
 capWho.addEventListener("keydown", ev=>{ if(ev.key === "Enter"){ ev.preventDefault(); addCapsule(); } });
+capLive.addEventListener("keydown", ev=>{ if(ev.key === "Enter"){ ev.preventDefault(); addCapsule(); } });
 
 function resolveCapsule(id, verdict){
   const c = capsules.find(c=>c.id === id);
   if(!c) return;
   c.resolved = verdict;
+  c.resolvedISO = new Date().toISOString();
   saveCapsules();
   renderCapsules();
 }
@@ -1417,8 +1423,11 @@ function wrapCanvasText(ctx, text, maxWidth){
 }
 function generateCertificate(c){
   const who = c.who || "Anónimo";
-  const dateStr = fmtFullDate(new Date(c.createdISO));
-  const sentence = `${who} previu que "${c.text}" em ${dateStr} e estava errado.`;
+  const days = Math.max(0, Math.round((new Date(c.resolvedISO || c.dueISO || Date.now()) - new Date(c.createdISO)) / 86400000));
+  const daysLabel = days + (days === 1 ? " dia" : " dias");
+  const line1 = `${who} previu que "${c.text}"`;
+  const line2 = c.live ? `na LIVE ${c.live}` : "";
+  const line4 = `Passados ${daysLabel} ele estava errado.`;
 
   const W = 900, H = 560;
   const canvas = document.createElement("canvas");
@@ -1448,10 +1457,15 @@ function generateCertificate(c){
   ctx.fillText("bear-graph — o gráfico que sobe apesar de tudo", W/2, 114);
 
   ctx.fillStyle = ink;
-  ctx.font = "600 27px -apple-system, Arial, sans-serif";
-  const lines = wrapCanvasText(ctx, sentence, W - 160);
-  let y = H/2 - (lines.length-1)*19;
-  lines.forEach(line=>{ ctx.fillText(line, W/2, y); y += 40; });
+  ctx.font = "600 24px -apple-system, Arial, sans-serif";
+  const lines = [
+    ...wrapCanvasText(ctx, line1, W - 160),
+    ...(line2 ? wrapCanvasText(ctx, line2, W - 160) : []),
+    "",
+    ...wrapCanvasText(ctx, line4, W - 160)
+  ];
+  let y = H/2 - (lines.length-1)*17;
+  lines.forEach(line=>{ ctx.fillText(line, W/2, y); y += 34; });
 
   ctx.save();
   ctx.translate(W-150, H-120);
@@ -1468,15 +1482,35 @@ function generateCertificate(c){
   ctx.font = "400 12px -apple-system, Arial, sans-serif";
   ctx.fillText("Emitido em " + fmtFullDate(new Date()), W/2, H-50);
 
+  if(signatureImg.complete && signatureImg.naturalWidth){
+    const sw = signatureImg.naturalWidth, sh = signatureImg.naturalHeight;
+    const tint = document.createElement("canvas");
+    tint.width = sw; tint.height = sh;
+    const tctx = tint.getContext("2d");
+    tctx.drawImage(signatureImg, 0, 0);
+    tctx.globalCompositeOperation = "source-in";
+    tctx.fillStyle = ink;
+    tctx.fillRect(0, 0, sw, sh);
+    const sigW = 110, sigH = sigW * (sh / sw);
+    ctx.drawImage(tint, W/2 - sigW/2, H-50-16-sigH, sigW, sigH);
+  }
+
   return canvas;
 }
+const signatureImg = new Image();
+const signatureReady = new Promise(resolve=>{
+  signatureImg.onload = ()=> resolve(true);
+  signatureImg.onerror = ()=> resolve(false);
+});
+signatureImg.src = "assinatura.png";
 const certModal = document.getElementById("certModal");
 const certImgWrap = document.getElementById("certImgWrap");
 const certDownloadBtn = document.getElementById("certDownloadBtn");
 const certCloseBtn = document.getElementById("certCloseBtn");
 let certCurrentDataURL = null;
 
-function showCertificate(c){
+async function showCertificate(c){
+  await signatureReady;
   const canvas = generateCertificate(c);
   certCurrentDataURL = canvas.toDataURL("image/png");
   certImgWrap.innerHTML = "";
@@ -1544,7 +1578,7 @@ function makeDraggable(el, c){
 
 function renderCapsules(){
   const now = new Date();
-  capList.innerHTML = "";
+  capList.querySelectorAll(".capItem").forEach(el=> el.remove());
 
   const dueCount = capsules.filter(c=> !c.resolved && new Date(c.dueISO) <= now).length;
   if(dueCount > 0){
@@ -1587,6 +1621,7 @@ function renderCapsules(){
     if(c.who && c.where) attribution = `— ${esc(c.who)} (${esc(c.where)})`;
     else if(c.who) attribution = `— ${esc(c.who)}`;
     else if(c.where) attribution = `(${esc(c.where)})`;
+    if(c.live) attribution += (attribution ? " · " : "— ") + `Live nº${esc(c.live)}`;
     const whoLine = attribution ? ` <span class="capwho">${attribution}</span>` : "";
     el.innerHTML = `<div class="body">
         <div class="qt">"${esc(c.text)}"${whoLine}</div>
@@ -1627,14 +1662,17 @@ const capEditModal = document.getElementById("capEditModal");
 const capEditText = document.getElementById("capEditText");
 const capEditWho = document.getElementById("capEditWho");
 const capEditWhere = document.getElementById("capEditWhere");
+const capEditLive = document.getElementById("capEditLive");
 const capEditDateSlot = document.getElementById("capEditDateSlot");
 capEditWhere.addEventListener("change", ()=> syncWherePlaceholder(capEditWhere));
+capEditLive.addEventListener("input", ()=>{ capEditLive.value = capEditLive.value.replace(/\D/g, "").slice(0, 4); });
 
 function openEditModal(c){
   editingCapsuleId = c.id;
   capEditText.value = c.text;
   capEditWho.value = c.who || "";
   capEditWhere.value = c.where || "";
+  capEditLive.value = c.live || "";
   syncWherePlaceholder(capEditWhere);
   editDueDate = new Date(c.dueISO);
   dateBtnText.textContent = fmtDDMMYYYY(editDueDate);
@@ -1656,6 +1694,7 @@ document.getElementById("capEditSave").addEventListener("click", ()=>{
   c.text = newText;
   c.who = capEditWho.value.trim();
   c.where = capEditWhere.value;
+  c.live = capEditLive.value.trim();
   c.dueISO = editDueDate.toISOString();
   saveCapsules();
   closeEditModal();
