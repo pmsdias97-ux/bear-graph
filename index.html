@@ -617,15 +617,36 @@ function marketOpenET(){          // NYSE: seg–sex, 9:30–16:00 ET (feriados 
 
 function setLiveUI(){ document.body.classList.toggle("live", marketOpenET()); }  // bolinhas a pulsar
 
+async function fetchJSON(url, opts, timeoutMs){
+  const ctrl = new AbortController();
+  const timer = setTimeout(()=> ctrl.abort(), timeoutMs);
+  try{
+    const res = await fetch(url, { ...opts, signal: ctrl.signal });
+    if(!res.ok) return null;
+    return await res.json();
+  }catch(e){ return null; }         // sem rede, timeout, ou bloqueado por CORS — tenta a fonte seguinte
+  finally{ clearTimeout(timer); }
+}
+
+// A Yahoo Finance não envia cabeçalhos CORS, por isso o fetch direto falha sempre
+// num browser real (funciona em curl, mas não em JS de página). Tenta o pedido direto
+// primeiro (caso isso mude) e, se falhar, passa por proxies CORS públicos como reserva —
+// r.jina.ai é o único que se mostrou fiável nos testes; os outros ficam como rede de
+// segurança extra. Se todos falharem, mantém-se o valor estático de sempre, sem quebrar nada.
+function yahooChartURL(host){ return `https://${host}/v8/finance/chart/%5EGSPC?interval=1m&range=1d`; }
 async function fetchLivePrice(){
-  for(const host of ["query1.finance.yahoo.com","query2.finance.yahoo.com"]){
-    try{
-      const res = await fetch(`https://${host}/v8/finance/chart/%5EGSPC?interval=1m&range=1d`);
-      if(!res.ok) continue;                 // 429 etc. — tenta o host seguinte
-      const j = await res.json();
-      const p = j.chart.result[0].meta.regularMarketPrice;
-      if(p > 0){ applyLivePrice(p); return true; }
-    }catch(e){ /* sem rede — tenta o host seguinte */ }
+  const direct = yahooChartURL("query1.finance.yahoo.com");
+  const targets = [
+    { url: direct, opts: {} },
+    { url: yahooChartURL("query2.finance.yahoo.com"), opts: {} },
+    { url: "https://r.jina.ai/" + direct, opts: { headers: { "X-Return-Format": "text" } } },
+    { url: "https://api.allorigins.win/raw?url=" + encodeURIComponent(direct), opts: {} },
+    { url: "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(direct), opts: {} },
+  ];
+  for(const { url, opts } of targets){
+    const j = await fetchJSON(url, opts, 6000);
+    const p = j?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    if(p > 0){ applyLivePrice(p); return true; }
   }
   return false;
 }
